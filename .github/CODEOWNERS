@@ -1,0 +1,49 @@
+# Phân quyền review và sở hữu file theo vai trò trong nhóm
+# Cú pháp: <đường dẫn> @<username_github>
+
+# Fallback mặc định cho cả repo
+* @khoa-lead
+
+# VT1 - Quản lý & Thuật toán cơ bản (Khoa)
+bloxorz/model.py @khoa-lead
+bloxorz/stage.py @khoa-lead
+bloxorz/verify.py @khoa-lead
+bloxorz/search/base.py @khoa-lead
+bloxorz/search/bfs.py @khoa-lead
+bloxorz/search/dfs.py @khoa-lead
+benchmark/run.py @khoa-lead
+tests/search/ @khoa-lead
+requirements.txt @khoa-lead
+CONTRIBUTING.md @khoa-lead
+
+# VT2 - Luật chơi (Hợp)
+bloxorz/engine/ @hop-vt2
+tests/engine/ @hop-vt2
+
+# VT3 - Cảnh 3D & Hoạt ảnh (Trí)
+bloxorz/gui/scene/ @tri-vt3
+sandbox/ @tri-vt3
+
+# VT4 - Ứng dụng & Màn chơi (Khang)
+main.py @khang-vt4
+bloxorz/loader.py @khang-vt4
+bloxorz/gui/app.py @khang-vt4
+bloxorz/gui/ui.py @khang-vt4
+bloxorz/gui/controller.py @khang-vt4
+bloxorz/gui/solver_runner.py @khang-vt4
+bloxorz/gui/fake_scene.py @khang-vt4
+stages/fixtures/ @khang-vt4
+stages/original/ @khang-vt4
+tools/convert_quick_bloxorz.py @khang-vt4
+tests/app/ @khang-vt4
+tests/data/ @khang-vt4
+README.md @khang-vt4
+
+# VT5 - UCS, A* & Thực nghiệm (Long)
+bloxorz/search/cost.py @long-vt5
+bloxorz/search/ucs.py @long-vt5
+bloxorz/search/astar.py @long-vt5
+bloxorz/search/heuristics.py @long-vt5
+stages/bench/ @long-vt5
+benchmark/plots.py @long-vt5
+tests/informed/ @long-vt5
