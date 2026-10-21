@@ -88,3 +88,34 @@ def test_stage_switch_at_lookup():
     assert mapping[(1, 1)] == sw1
     assert mapping[(2, 3)] == sw2
     assert (0, 0) not in mapping
+
+
+def test_action_validation():
+    """6. Kiểm tra Action chỉ chấp nhận cube là None, 0 hoặc 1."""
+    # Hợp lệ
+    a_none = Action(direction=Direction.UP)
+    a_0 = Action(direction=Direction.RIGHT, cube=0)
+    a_1 = Action(direction=Direction.LEFT, cube=1)
+    assert a_none.cube is None
+    assert a_0.cube == 0
+    assert a_1.cube == 1
+
+    # Không hợp lệ: ném ValueError
+    with pytest.raises(ValueError):
+        Action(direction=Direction.UP, cube=2)
+
+    with pytest.raises(ValueError):
+        Action(direction=Direction.DOWN, cube=-1)
+
+
+def test_stage_mappings_immutable():
+    """7. Kiểm tra switch_at và bridge_at là read-only (MappingProxyType)."""
+    sw = Switch(id="sw1", kind="soft", pos=(0, 0), mode="toggle")
+    bridge = Bridge(id="b1", cells=((1, 1),))
+    stage = Stage("st", "G1", ("##", "##"), (0, 0), (1, 1), bridges=(bridge,), switches=(sw,))
+
+    with pytest.raises(TypeError):
+        stage.switch_at[(0, 0)] = sw
+
+    with pytest.raises(TypeError):
+        stage.bridge_at[(1, 1)] = "b2"

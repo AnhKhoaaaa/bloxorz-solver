@@ -62,3 +62,7 @@ class Action:
     """
     direction: Direction
     cube: int | None = None    # None = khối nguyên; 0 hoặc 1 khi đang tách
+
+    def __post_init__(self):
+        if self.cube is not None and self.cube not in (0, 1):
+            raise ValueError(f"cube must be None, 0, or 1, got {self.cube}")

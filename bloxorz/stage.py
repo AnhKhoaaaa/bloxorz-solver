@@ -10,7 +10,8 @@ Cấu trúc dữ liệu cho màn chơi Bloxorz:
 from __future__ import annotations
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Literal
+from types import MappingProxyType
+from typing import Literal, Mapping
 
 from bloxorz.model import Pos
 
@@ -95,18 +96,18 @@ class Stage:
         return "."
 
     @cached_property
-    def switch_at(self) -> dict[Pos, Switch]:
-        """Bảng tra cứu công tắc theo tọa độ đặt công tắc."""
-        return {s.pos: s for s in self.switches}
+    def switch_at(self) -> Mapping[Pos, Switch]:
+        """Bảng tra cứu công tắc theo tọa độ đặt công tắc (bất biến / read-only)."""
+        return MappingProxyType({s.pos: s for s in self.switches})
 
     @cached_property
-    def bridge_at(self) -> dict[Pos, str]:
-        """Bảng tra cứu id cầu theo từng tọa độ ô cầu."""
+    def bridge_at(self) -> Mapping[Pos, str]:
+        """Bảng tra cứu id cầu theo từng tọa độ ô cầu (bất biến / read-only)."""
         mapping: dict[Pos, str] = {}
         for b in self.bridges:
             for cell_pos in b.cells:
                 mapping[cell_pos] = b.id
-        return mapping
+        return MappingProxyType(mapping)
 
     def initial_bridges_open(self) -> frozenset[str]:
         """Trả về tập hợp các id cầu ở trạng thái mở ban đầu."""
