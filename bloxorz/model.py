@@ -40,12 +40,18 @@ class State:
     bridges_open: frozenset[str] = frozenset()
 
     def __post_init__(self):
+        object.__setattr__(self, "bridges_open", frozenset(self.bridges_open))
+        if (self.pose is None) != (self.cube2 is not None):
+            raise ValueError("pose and cube2 must describe either an intact or split block")
         # Tự động chuẩn hóa: nếu tách 2 cube, luôn giữ pos < cube2
         # Giúp 2 trạng thái có cùng vị trí 2 cube luôn bằng nhau và có cùng hash
-        if self.cube2 is not None and self.cube2 < self.pos:
-            first, second = self.cube2, self.pos
-            object.__setattr__(self, "pos", first)
-            object.__setattr__(self, "cube2", second)
+        if self.cube2 is not None:
+            if self.cube2 == self.pos:
+                raise ValueError("cube positions must be distinct")
+            if self.cube2 < self.pos:
+                first, second = self.cube2, self.pos
+                object.__setattr__(self, "pos", first)
+                object.__setattr__(self, "cube2", second)
 
 @dataclass(frozen=True, slots=True)
 class Action:
