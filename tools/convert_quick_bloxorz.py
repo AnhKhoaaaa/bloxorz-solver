@@ -8,6 +8,7 @@ bằng pixel (50px = 1 ô, có thể âm):
     normal -> '#'    weak -> 'F'    goal -> 'G'    bridge -> 'B'
     button -> công tắc soft (hard=false) / heavy (hard=true) trên ô '#'
               type: toggle -> toggle, on -> permanent open, off -> permanent close
+              nhiều nút chồng trên 1 ô với hành động khác nhau -> 1 công tắc dùng "actions"
     splitter -> công tắc split trên ô '#', split1/split2 là id object của 2 ô đích
     border -> vùng chết quanh màn, tương đương '.' nên bỏ qua
 Khối luôn xuất phát đứng tại ô (0, 0) của Tiled.
@@ -33,7 +34,7 @@ from bloxorz.loader import parse_stage  # noqa: E402
 
 TILE = 50
 TILE_CHARS = {"normal": "#", "weak": "F", "goal": "G", "bridge": "B", "button": "#", "splitter": "#"}
-BUTTON_MODES = {"toggle": ("toggle", None), "on": ("permanent", "open"), "off": ("permanent", "close")}
+BUTTON_ACTIONS = {"toggle": "toggle", "on": "open", "off": "close"}
 
 
 class UnsupportedStage(ValueError):
@@ -106,15 +107,25 @@ def convert(tiled: dict[str, Any], level: int) -> dict[str, Any]:
 
     switches: list[tuple[tuple[int, int], dict[str, Any]]] = []
     for p, variants in buttons.items():
-        if len(variants) > 1:
-            desc = "; ".join(f"{v['type']} {v['activating']}" for v in variants)
-            raise UnsupportedStage(f"level {level}: switch at {shift(p)} has several actions ({desc})")
-        v = variants[0]
-        mode, set_to = BUTTON_MODES[v["type"]]
-        sw: dict[str, Any] = {"kind": "heavy" if v.get("hard") else "soft", "pos": shift(p), "mode": mode}
-        if set_to:
-            sw["set_to"] = set_to
-        sw["bridges"] = v["activating"].split(",")
+        # Nhiều nút chồng trên 1 ô = 1 công tắc làm nhiều việc cùng lúc
+        if len({bool(v.get("hard")) for v in variants}) > 1:
+            raise UnsupportedStage(f"level {level}: switch at {shift(p)} mixes soft and heavy buttons")
+        actions: dict[str, str] = {}
+        for v in variants:
+            action = BUTTON_ACTIONS[v["type"]]
+            for bid in v["activating"].split(","):
+                if actions.setdefault(bid, action) != action:
+                    raise UnsupportedStage(f"level {level}: switch at {shift(p)} both {actions[bid]}s and {action}s {bid!r}")
+        sw: dict[str, Any] = {"kind": "heavy" if variants[0].get("hard") else "soft", "pos": shift(p)}
+        kinds = set(actions.values())
+        if len(kinds) == 1:
+            action = kinds.pop()
+            sw["mode"] = "toggle" if action == "toggle" else "permanent"
+            if action != "toggle":
+                sw["set_to"] = action
+            sw["bridges"] = list(actions)
+        else:
+            sw["actions"] = [[bid, a] for bid, a in actions.items()]
         switches.append((p, sw))
     for p, props in splitters:
         targets = [shift(by_id[props["split1"]]), shift(by_id[props["split2"]])]

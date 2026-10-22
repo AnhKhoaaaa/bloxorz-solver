@@ -1,7 +1,7 @@
 """
 Kiểm thử script đổi màn Quick Bloxorz sang JSON - Task 4.7
 - Đổi map Tiled giả lập: dời tọa độ âm, cầu, công tắc, công tắc tách.
-- Báo lỗi với ô công tắc có nhiều hành động (chưa hỗ trợ).
+- Nhiều nút chồng trên 1 ô thành 1 công tắc có actions; báo lỗi khi mâu thuẫn.
 - Mọi file trong stages/original/ đọc được bằng loader.
 """
 
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from bloxorz.loader import load_stage, load_stages, parse_stage
+from bloxorz.loader import load_stage, load_stages, parse_stage, stage_to_dict
 from tools.convert_quick_bloxorz import UnsupportedStage, convert, format_stage
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -77,17 +77,47 @@ def test_convert_splitter_targets_use_object_ids():
     assert data["group"] == "G4"
 
 
-def test_convert_rejects_switch_with_several_actions():
-    with pytest.raises(UnsupportedStage, match="several actions"):
-        convert(tiled(
-            normal=[tile(1, 0, 0)],
-            bridge=[tile(2, 0, 2, id="bridgeA"), tile(3, 0, 3, id="bridgeB")],
-            button=[
-                tile(4, 0, 1, activating="bridgeA", hard=True, type="on"),
-                tile(5, 0, 1, activating="bridgeB", hard=True, type="off"),
-            ],
-            goal=[tile(6, 0, 4)],
-        ), level=17)
+def stacked_buttons(*buttons):
+    return tiled(
+        normal=[tile(1, 0, 0)],
+        bridge=[tile(2, 0, 2, id="bridgeA"), tile(3, 0, 3, id="bridgeB")],
+        button=[tile(10 + i, 0, 1, **b) for i, b in enumerate(buttons)],
+        goal=[tile(6, 0, 4)],
+    )
+
+
+def test_convert_stacked_buttons_become_actions():
+    data = convert(stacked_buttons(
+        dict(activating="bridgeA", hard=True, type="on"),
+        dict(activating="bridgeB", hard=True, type="off"),
+    ), level=17)
+    assert data["switches"] == [
+        {"id": "s1", "kind": "heavy", "pos": [0, 1], "actions": [["bridgeA", "open"], ["bridgeB", "close"]]},
+    ]
+    sw = parse_stage(data).switch_at[(0, 1)]
+    assert sw.actions == (("bridgeA", "open"), ("bridgeB", "close"))
+    assert sw.mode is None and sw.bridges == ("bridgeA", "bridgeB")
+
+
+def test_convert_stacked_buttons_with_same_action_stay_simple():
+    data = convert(stacked_buttons(
+        dict(activating="bridgeA", hard=False, type="toggle"),
+        dict(activating="bridgeB", hard=False, type="toggle"),
+    ), level=1)
+    assert data["switches"][0] == {
+        "id": "s1", "kind": "soft", "pos": [0, 1], "mode": "toggle", "bridges": ["bridgeA", "bridgeB"],
+    }
+
+
+@pytest.mark.parametrize("buttons, message", [
+    ((dict(activating="bridgeA", hard=True, type="on"), dict(activating="bridgeB", hard=False, type="off")),
+     "mixes soft and heavy"),
+    ((dict(activating="bridgeA", hard=True, type="on"), dict(activating="bridgeA", hard=True, type="off")),
+     "both opens and closes 'bridgeA'"),
+])
+def test_convert_rejects_conflicting_buttons(buttons, message):
+    with pytest.raises(UnsupportedStage, match=message):
+        convert(stacked_buttons(*buttons), level=1)
 
 
 def test_format_stage_is_valid_json_and_round_trips():
@@ -101,8 +131,9 @@ def test_format_stage_is_valid_json_and_round_trips():
 
 def test_original_stages_load():
     stages = load_stages(ORIGINAL)
-    assert len(stages) == 27
+    assert len(stages) == 33
     assert all(s.id == p.stem for s, p in zip(stages, sorted(ORIGINAL.glob("*.json"))))
+    assert all(parse_stage(stage_to_dict(s)) == s for s in stages)
 
 
 def test_original_stage_01_matches_known_layout():
