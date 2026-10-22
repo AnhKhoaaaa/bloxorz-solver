@@ -68,3 +68,34 @@ bloxorz-solver/
 ├── results/                   # Bảng số liệu và đồ thị kết quả (VT1, VT5)
 └── tests/                     # Hệ thống kiểm thử tự động với pytest
 ```
+
+---
+
+## 🗺️ Định Dạng File Màn Chơi (JSON)
+Mỗi màn là 1 file `.json` (UTF-8). Đặc tả đầy đủ nằm ở docstring của `bloxorz/loader.py`; ví dụ mẫu ở `stages/fixtures/`.
+
+```json
+{
+  "id": "fixture_bridge_soft",
+  "group": "G2",
+  "grid": ["S###BB###G"],
+  "bridges": [{"id": "b1", "cells": [[0, 4], [0, 5]], "initially_open": false}],
+  "switches": [{"id": "s1", "kind": "soft", "pos": [0, 1], "mode": "toggle", "bridges": ["b1"]}]
+}
+```
+
+| Ký tự | Ý nghĩa | Ký tự | Ý nghĩa |
+| :---: | :--- | :---: | :--- |
+| `.` | Khoảng trống (rơi) | `G` | Lỗ đích (đúng 1 ô) |
+| `#` | Sàn thường | `F` | Ô dễ vỡ (không được đứng) |
+| `S` | Ô xuất phát (đúng 1 ô) | `B` | Ô cầu (khai báo trong `bridges`) |
+
+- Tọa độ là `[hàng, cột]`, `(0, 0)` ở góc trên-trái.
+- Công tắc `soft`/`heavy`: bắt buộc `mode` (`toggle` | `permanent`), `bridges`; `set_to` (`open` | `close`) chỉ dùng khi `permanent`.
+- Công tắc `split`: chỉ có `targets` gồm 2 ô.
+
+```python
+from bloxorz.loader import load_stage, load_stages
+stage = load_stage("stages/fixtures/basic.json")   # ném StageFormatError nếu file sai, kèm danh sách mọi lỗi
+stages = load_stages("stages/original")
+```

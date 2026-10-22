@@ -1,0 +1,13 @@
+{
+  "id": "fixture_bridge_heavy",
+  "group": "G2",
+  "grid": [
+    "S###BB###G"
+  ],
+  "bridges": [
+    {"id": "b1", "cells": [[0, 4], [0, 5]], "initially_open": false}
+  ],
+  "switches": [
+    {"id": "s1", "kind": "heavy", "pos": [0, 3], "mode": "permanent", "set_to": "open", "bridges": ["b1"]}
+  ]
+}
