@@ -79,7 +79,7 @@ def test_is_fragile_tile_detection(mixed_fragile_stage):
 
 def test_fragile_tile_symbols():
     """Kiểm tra các ký hiệu được xem là gạch dễ vỡ."""
-    for symbol in ("x", "X", "o", "O"):
+    for symbol in ("F", "f", "x", "X", "o", "O"):
         assert symbol in FRAGILE_TILES
 
 

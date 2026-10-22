@@ -20,6 +20,7 @@ from bloxorz.engine.rules import (
     is_valid_state,
     is_goal,
     step,
+    initial_state,
 )
 
 
@@ -269,3 +270,38 @@ def test_step_illegal_move_returns_none(basic_stage):
     assert step(start_state, Action(Direction.UP), basic_stage) is None
     # Lăn sang trái (ra ngoài biên trái) -> Rơi
     assert step(start_state, Action(Direction.LEFT), basic_stage) is None
+
+
+def test_fragile_tile_with_standard_symbol_f():
+    """Kiểm tra ô gạch dễ vỡ với ký hiệu chuẩn 'F' (theo quy định đề án và loader)."""
+    grid = ("###", "#F#", "##G")
+    stage = Stage(id="f_stage", group="G2", grid=grid, start=(0, 0), goal=(2, 2))
+    # Đứng trên 'F' -> Rơi
+    assert is_valid_state(State(Pose.STANDING, (1, 1)), stage) is False
+    # Nằm ngang qua 'F' -> An toàn
+    assert is_valid_state(State(Pose.HORIZONTAL, (1, 0)), stage) is True
+
+
+def test_split_cube_falling_into_goal():
+    """Khối con 1x1x1 khi phân tách nếu rơi vào lỗ đích 'G' thì bị thua."""
+    grid = ("###", "#.G")
+    stage = Stage(id="g_stage", group="G1", grid=grid, start=(0, 0), goal=(1, 2))
+    # Khối con 1 tại (1, 2) [G] -> Rơi
+    assert is_valid_state(State(pose=None, pos=(1, 2), cube2=(0, 0)), stage) is False
+
+
+def test_initial_state_helper():
+    """Kiểm tra hàm initial_state tạo đúng State ban đầu từ Stage."""
+    stage = Stage(
+        id="init_stage",
+        group="G1",
+        grid=("###", "###"),
+        start=(1, 2),
+        goal=(1, 0),
+        bridges=(Bridge("b1", ((0, 0),), initially_open=True),),
+    )
+    s0 = initial_state(stage)
+    assert s0.pose == Pose.STANDING
+    assert s0.pos == (1, 2)
+    assert s0.bridges_open == frozenset(["b1"])
+

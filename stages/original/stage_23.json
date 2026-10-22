@@ -1,0 +1,30 @@
+{
+  "id": "stage_23",
+  "group": "G4",
+  "grid": [
+    ".###........###",
+    ".###........###",
+    ".###...###BB###",
+    "B###B..#G#..###",
+    "#...#..###....#",
+    "#...#..FFF....#",
+    "#BB###FFFFF###B",
+    "...#S#FFFFF###.",
+    "...###FFFFF###.",
+    "...#####B......"
+  ],
+  "bridges": [
+    {"id": "bridgeA", "cells": [[3, 0]], "initially_open": false},
+    {"id": "bridgeB", "cells": [[3, 4]], "initially_open": false},
+    {"id": "bridgeC", "cells": [[2, 10], [2, 11], [6, 1], [6, 2]], "initially_open": false},
+    {"id": "bridgeD", "cells": [[9, 8]], "initially_open": false},
+    {"id": "bridgeE", "cells": [[6, 14]], "initially_open": false}
+  ],
+  "switches": [
+    {"id": "s1", "kind": "heavy", "pos": [1, 2], "mode": "permanent", "set_to": "open", "bridges": ["bridgeB"]},
+    {"id": "s2", "kind": "soft", "pos": [1, 13], "actions": [["bridgeC", "open"], ["bridgeD", "toggle"]]},
+    {"id": "s3", "kind": "soft", "pos": [3, 14], "mode": "permanent", "set_to": "close", "bridges": ["bridgeC", "bridgeE"]},
+    {"id": "s4", "kind": "soft", "pos": [5, 0], "actions": [["bridgeA", "open"], ["bridgeC", "close"]]},
+    {"id": "s5", "kind": "split", "pos": [7, 12], "targets": [[7, 12], [2, 2]]}
+  ]
+}

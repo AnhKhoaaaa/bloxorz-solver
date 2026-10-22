@@ -1,0 +1,31 @@
+{
+  "id": "stage_31",
+  "group": "G3",
+  "grid": [
+    "...........###B",
+    ".###....#..#G#B",
+    ".###BB###BB###B",
+    ".###..###...#..",
+    ".FFF..###...F..",
+    "..F...###..FFF.",
+    "..#...###..###.",
+    "B###BB###BB#S#.",
+    "B###..#....###.",
+    "B###..........."
+  ],
+  "bridges": [
+    {"id": "bridgeA", "cells": [[2, 4], [2, 5]], "initially_open": true},
+    {"id": "bridgeB", "cells": [[2, 9], [2, 10]], "initially_open": false},
+    {"id": "bridgeC", "cells": [[0, 14], [1, 14], [2, 14]], "initially_open": false},
+    {"id": "bridgeD", "cells": [[7, 0], [8, 0], [9, 0]], "initially_open": true},
+    {"id": "bridgeE", "cells": [[7, 4], [7, 5]], "initially_open": false},
+    {"id": "bridgeF", "cells": [[7, 9], [7, 10]], "initially_open": true}
+  ],
+  "switches": [
+    {"id": "s1", "kind": "heavy", "pos": [1, 8], "mode": "toggle", "bridges": ["bridgeB"]},
+    {"id": "s2", "kind": "soft", "pos": [4, 6], "mode": "permanent", "set_to": "close", "bridges": ["bridgeA", "bridgeB", "bridgeE", "bridgeF"]},
+    {"id": "s3", "kind": "soft", "pos": [7, 7], "mode": "permanent", "set_to": "close", "bridges": ["bridgeA", "bridgeB", "bridgeE", "bridgeF"]},
+    {"id": "s4", "kind": "heavy", "pos": [8, 2], "actions": [["bridgeC", "open"], ["bridgeA", "close"]]},
+    {"id": "s5", "kind": "heavy", "pos": [8, 6], "mode": "toggle", "bridges": ["bridgeE"]}
+  ]
+}

@@ -6,6 +6,8 @@ Luật lăn khối, rơi xuống vực, kiểm tra ô đích và ô dễ vỡ.
 - is_valid_state: Kiểm tra tính an toàn/hợp lệ của trạng thái khối trên bàn cờ.
 - is_goal: Kiểm tra điều kiện hoàn thành màn chơi (khối đứng thẳng trên ô đích).
 - step: Thực hiện một nước đi di chuyển khối, trả về trạng thái mới hoặc None nếu rơi/thua.
+- is_fragile_tile: Kiểm tra nhanh một tọa độ có phải là ô gạch dễ vỡ.
+- initial_state: Trạng thái ban đầu chuẩn của khối trên màn chơi.
 """
 
 from __future__ import annotations
@@ -14,8 +16,8 @@ from typing import Sequence
 from bloxorz.model import Action, Direction, Pose, Pos, State
 from bloxorz.stage import Stage
 
-# Ký hiệu ô gạch dễ vỡ trên bản đồ
-FRAGILE_TILES: frozenset[str] = frozenset({"x", "X", "o", "O"})
+# Ký hiệu ô gạch dễ vỡ trên bản đồ ('F' theo quy chuẩn repo, 'x'/'o' để tương thích)
+FRAGILE_TILES: frozenset[str] = frozenset({"F", "f", "x", "X", "o", "O"})
 
 
 def is_fragile_tile(stage: Stage, pos: Pos) -> bool:
@@ -116,7 +118,7 @@ def is_valid_state(state: State, stage: Stage) -> bool:
             if not stage.in_bounds(p):
                 return False
             ch = stage.cell(p)
-            if ch == ".":
+            if ch == "." or ch == "G":
                 return False
             # Kiểm tra cầu
             if p in stage.bridge_at:
@@ -186,3 +188,12 @@ def step(state: State, action: Action, stage: Stage) -> State | None:
         return None
 
     return new_state
+
+
+def initial_state(stage: Stage) -> State:
+    """Trả về trạng thái ban đầu của khối trên màn chơi (tư thế STANDING tại stage.start)."""
+    return State(
+        pose=Pose.STANDING,
+        pos=stage.start,
+        bridges_open=stage.initial_bridges_open(),
+    )

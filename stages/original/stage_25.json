@@ -1,0 +1,28 @@
+{
+  "id": "stage_25",
+  "group": "G3",
+  "grid": [
+    "..##..........",
+    "..###.........",
+    "..###.....###B",
+    "...####B..#G#B",
+    "......##BB###.",
+    ".##...##......",
+    "####BB##......",
+    "#SB...##...###",
+    "##B...########",
+    "...........###"
+  ],
+  "bridges": [
+    {"id": "bridgeA", "cells": [[4, 8], [4, 9]], "initially_open": false},
+    {"id": "bridgeB", "cells": [[6, 4], [6, 5]], "initially_open": true},
+    {"id": "bridgeC", "cells": [[7, 2], [8, 2]], "initially_open": true},
+    {"id": "bridgeD", "cells": [[2, 13], [3, 13]], "initially_open": false},
+    {"id": "bridgeE", "cells": [[3, 7]], "initially_open": false}
+  ],
+  "switches": [
+    {"id": "s1", "kind": "soft", "pos": [2, 4], "mode": "toggle", "bridges": ["bridgeA", "bridgeD"]},
+    {"id": "s2", "kind": "heavy", "pos": [6, 2], "mode": "permanent", "set_to": "open", "bridges": ["bridgeA"]},
+    {"id": "s3", "kind": "soft", "pos": [8, 8], "actions": [["bridgeE", "open"], ["bridgeB", "close"]]}
+  ]
+}
