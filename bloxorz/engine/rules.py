@@ -14,8 +14,8 @@ from typing import Sequence
 from bloxorz.model import Action, Direction, Pose, Pos, State
 from bloxorz.stage import Stage
 
-# Ký hiệu ô gạch dễ vỡ trên bản đồ
-FRAGILE_TILES: frozenset[str] = frozenset({"x", "X", "o", "O"})
+# Ký hiệu ô gạch dễ vỡ trên bản đồ ('F' theo quy chuẩn repo, 'x'/'o' để tương thích)
+FRAGILE_TILES: frozenset[str] = frozenset({"F", "f", "x", "X", "o", "O"})
 
 
 def get_block_cells(pose: Pose, pos: Pos) -> tuple[Pos, ...]:
@@ -108,7 +108,7 @@ def is_valid_state(state: State, stage: Stage) -> bool:
             if not stage.in_bounds(p):
                 return False
             ch = stage.cell(p)
-            if ch == ".":
+            if ch == "." or ch == "G":
                 return False
             # Kiểm tra cầu
             if p in stage.bridge_at:
@@ -178,3 +178,13 @@ def step(state: State, action: Action, stage: Stage) -> State | None:
         return None
 
     return new_state
+
+
+def initial_state(stage: Stage) -> State:
+    """Trả về trạng thái ban đầu của khối trên màn chơi (tư thế STANDING tại stage.start)."""
+    return State(
+        pose=Pose.STANDING,
+        pos=stage.start,
+        bridges_open=stage.initial_bridges_open(),
+    )
+
