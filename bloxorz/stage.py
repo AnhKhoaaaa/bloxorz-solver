@@ -3,7 +3,7 @@
 Cấu trúc dữ liệu cho màn chơi Bloxorz:
 - SwitchKind, SwitchMode: Các loại công tắc và chế độ hoạt động
 - Bridge: Cầu gồm các ô và trạng thái ban đầu
-- Switch: Công tắc (mềm, nặng, tách) điều khiển cầu hoặc phân tách khối
+- Switch: Công tắc (mềm, nặng, tách) điều khiển cầu (theo từng cầu qua actions) hoặc phân tách khối
 - Stage: Bản đồ màn chơi bất biến, hỗ trợ truy vấn ô, công tắc và cầu
 """
 
@@ -17,6 +17,7 @@ from bloxorz.model import Pos
 
 SwitchKind = Literal["soft", "heavy", "split"]
 SwitchMode = Literal["toggle", "permanent"]
+BridgeAction = Literal["toggle", "open", "close"]
 
 @dataclass(frozen=True)
 class Bridge:
@@ -41,14 +42,27 @@ class Switch:
     - set_to: Chỉ áp dụng khi mode="permanent" ("open" hoặc "close").
     - bridges: Danh sách id các cầu mà công tắc này điều khiển (với soft/heavy).
     - targets: Tọa độ 2 vị trí đặt 2 cube sau khi tách (với split).
+    - actions: Hành động riêng cho từng cầu, dạng ((id cầu, "toggle" | "open" | "close"), ...).
+      Engine chỉ cần đọc actions. Bỏ trống thì tự suy ra từ mode/set_to/bridges.
+      Công tắc vừa mở cầu này vừa đóng cầu khác chỉ khai báo actions (mode=None, bridges tự điền).
     """
     id: str
     kind: SwitchKind
     pos: Pos
-    mode: SwitchMode | None = None          # soft/heavy bắt buộc; split: None
+    mode: SwitchMode | None = None          # soft/heavy (trừ khi chỉ khai báo actions); split: None
     set_to: Literal["open", "close"] = "open"  # chỉ dùng khi mode="permanent"
     bridges: tuple[str, ...] = ()           # soft/heavy: id các cầu điều khiển
     targets: tuple[Pos, Pos] | None = None  # split: 2 ô cube xuất hiện khi nhấn
+    actions: tuple[tuple[str, BridgeAction], ...] = ()  # soft/heavy: hành động theo từng cầu
+
+    def __post_init__(self):
+        if self.actions:
+            object.__setattr__(self, "actions", tuple((b, a) for b, a in self.actions))
+            if not self.bridges:
+                object.__setattr__(self, "bridges", tuple(b for b, _ in self.actions))
+        elif self.mode is not None:
+            action = "toggle" if self.mode == "toggle" else self.set_to
+            object.__setattr__(self, "actions", tuple((b, action) for b in self.bridges))
 
 @dataclass(frozen=True)
 class Stage:
