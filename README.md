@@ -92,6 +92,7 @@ Mỗi màn là 1 file `.json` (UTF-8). Đặc tả đầy đủ nằm ở docstr
 
 - Tọa độ là `[hàng, cột]`, `(0, 0)` ở góc trên-trái.
 - Công tắc `soft`/`heavy`: bắt buộc `mode` (`toggle` | `permanent`), `bridges`; `set_to` (`open` | `close`) chỉ dùng khi `permanent`.
+- Công tắc làm nhiều việc cùng lúc: thay `mode`/`set_to`/`bridges` bằng `"actions": [["b1", "open"], ["b2", "close"]]` (`toggle` | `open` | `close`).
 - Công tắc `split`: chỉ có `targets` gồm 2 ô.
 
 ```python

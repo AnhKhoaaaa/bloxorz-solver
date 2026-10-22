@@ -40,6 +40,9 @@ VALID = {
 }
 
 
+ACTION_SWITCH = {"id": "s4", "kind": "heavy", "pos": [1, 1]}
+
+
 def with_changes(fn):
     """Bản sao của VALID sau khi áp dụng fn (để mỗi test chỉ làm hỏng 1 chỗ)."""
     data = copy.deepcopy(VALID)
@@ -72,6 +75,22 @@ def test_defaults_when_optional_fields_missing():
     assert stage.bridges == () and stage.switches == ()
     soft = parse_stage(with_changes(lambda d: d["switches"][1].pop("set_to"))).switch_at[(0, 3)]
     assert soft.set_to == "open"
+
+
+def test_actions_switch():
+    data = with_changes(lambda d: d["switches"].append(ACTION_SWITCH | {"actions": [["b1", "close"]]}))
+    stage = parse_stage(data)
+    sw = stage.switch_at[(1, 1)]
+    assert sw.actions == (("b1", "close"),) and sw.mode is None and sw.bridges == ("b1",)
+    assert stage_to_dict(stage)["switches"][3] == data["switches"][3]
+    assert parse_stage(stage_to_dict(stage)) == stage
+
+
+def test_actions_derived_from_mode():
+    stage = parse_stage(VALID)
+    assert stage.switch_at[(0, 1)].actions == (("b1", "toggle"),)
+    assert stage.switch_at[(0, 3)].actions == (("b1", "close"),)
+    assert stage.switch_at[(1, 5)].actions == ()
 
 
 def test_ragged_rows_allowed():
@@ -133,6 +152,14 @@ def test_round_trip():
     (lambda d: d["switches"][2].pop("targets"), "switches[2]: missing key 'targets'"),
     (lambda d: d["switches"][2].update(targets=[[1, 0]]), "must be a list of exactly 2"),
     (lambda d: d["switches"][2].update(targets=[[1, 0], [1, 0]]), "two targets must be different"),
+    # công tắc nhiều hành động
+    (lambda d: d["switches"][0].update(actions=[["b1", "open"]]), "switches[0].mode: not allowed together with 'actions'"),
+    (lambda d: d["switches"][2].update(actions=[["b1", "open"]]), "switches[2]: unknown key 'actions'"),
+    (lambda d: d["switches"].append(ACTION_SWITCH | {"actions": []}), "switches[3].actions: must be a non-empty list"),
+    (lambda d: d["switches"].append(ACTION_SWITCH | {"actions": [["b1"]]}), "expected [bridge id, action]"),
+    (lambda d: d["switches"].append(ACTION_SWITCH | {"actions": [["b9", "open"]]}), "switches[3].actions[0]: unknown bridge id 'b9'"),
+    (lambda d: d["switches"].append(ACTION_SWITCH | {"actions": [["b1", "open"], ["b1", "close"]]}), "appears more than once"),
+    (lambda d: d["switches"].append(ACTION_SWITCH | {"actions": [["b1", "flip"]]}), "action must be one of"),
 ])
 def test_validator_reports_error(fn, expected):
     errors = errors_of(fn)

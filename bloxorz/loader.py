@@ -34,6 +34,8 @@ Ràng buộc:
 - Công tắc đặt trên ô '#', mỗi ô tối đa 1 công tắc.
 - soft/heavy: "mode" bắt buộc ("toggle" | "permanent"); "set_to" ("open" | "close",
   mặc định "open") chỉ dùng khi mode="permanent"; "bridges" là danh sách id cầu đã khai báo.
+  Công tắc làm nhiều việc khác nhau cùng lúc thì thay mode/set_to/bridges bằng
+  "actions": [["b1", "open"], ["b2", "close"]] (hành động: "toggle" | "open" | "close").
 - split: chỉ có "targets" gồm 2 ô khác nhau, không phải ô trống '.'.
 
 Khi tạo Stage, ô 'S' được chuẩn hóa thành '#', start/goal lấy từ vị trí 'S'/'G'.
@@ -53,12 +55,13 @@ GROUPS = ("G1", "G2", "G3", "G4", "G5")
 SWITCH_KINDS = ("soft", "heavy", "split")
 SWITCH_MODES = ("toggle", "permanent")
 SET_TO_VALUES = ("open", "close")
+BRIDGE_ACTIONS = ("toggle", "open", "close")
 
 _STAGE_KEYS = {"id", "group", "grid", "bridges", "switches"}
 _BRIDGE_KEYS = {"id", "cells", "initially_open"}
 _SWITCH_KEYS = {
-    "soft": {"id", "kind", "pos", "mode", "set_to", "bridges"},
-    "heavy": {"id", "kind", "pos", "mode", "set_to", "bridges"},
+    "soft": {"id", "kind", "pos", "mode", "set_to", "bridges", "actions"},
+    "heavy": {"id", "kind", "pos", "mode", "set_to", "bridges", "actions"},
     "split": {"id", "kind", "pos", "targets"},
 }
 
@@ -215,7 +218,12 @@ class _Validator:
             if kind not in SWITCH_KINDS:
                 self.err(f"{w}.kind", f"must be one of {', '.join(SWITCH_KINDS)}, got {kind!r}")
                 continue
-            required = {"id", "kind", "pos"} | ({"targets"} if kind == "split" else {"mode", "bridges"})
+            if kind == "split":
+                required = {"id", "kind", "pos", "targets"}
+            elif "actions" in s:
+                required = {"id", "kind", "pos", "actions"}
+            else:
+                required = {"id", "kind", "pos", "mode", "bridges"}
             self.check_keys(w, s, _SWITCH_KEYS[kind], required)
 
             sid = s.get("id")
@@ -242,6 +250,9 @@ class _Validator:
                 self.check_bridge_switch(w, s, bridge_ids)
 
     def check_bridge_switch(self, w: str, s: Mapping, bridge_ids: set[str]) -> None:
+        if "actions" in s:
+            self.check_actions(w, s, bridge_ids)
+            return
         mode = s.get("mode")
         if "mode" in s and mode not in SWITCH_MODES:
             self.err(f"{w}.mode", f"must be one of {', '.join(SWITCH_MODES)}, got {mode!r}")
@@ -261,6 +272,29 @@ class _Validator:
         for ref in refs:
             if ref not in bridge_ids:
                 self.err(f"{w}.bridges", f"unknown bridge id {ref!r}")
+
+    def check_actions(self, w: str, s: Mapping, bridge_ids: set[str]) -> None:
+        for k in ("mode", "set_to", "bridges"):
+            if k in s:
+                self.err(f"{w}.{k}", "not allowed together with 'actions'")
+        actions = s["actions"]
+        if not (isinstance(actions, list) and actions):
+            self.err(f"{w}.actions", "must be a non-empty list of [bridge id, action]")
+            return
+        seen: set[str] = set()
+        for j, a in enumerate(actions):
+            wj = f"{w}.actions[{j}]"
+            if not (isinstance(a, list) and len(a) == 2 and isinstance(a[0], str)):
+                self.err(wj, f"expected [bridge id, action], got {a!r}")
+                continue
+            ref, action = a
+            if ref not in bridge_ids:
+                self.err(wj, f"unknown bridge id {ref!r}")
+            elif ref in seen:
+                self.err(wj, f"bridge {ref!r} appears more than once")
+            seen.add(ref)
+            if action not in BRIDGE_ACTIONS:
+                self.err(wj, f"action must be one of {', '.join(BRIDGE_ACTIONS)}, got {action!r}")
 
     def check_targets(self, w: str, targets: Any) -> None:
         if targets is None:
@@ -314,6 +348,8 @@ def parse_stage(data: Any, source: str = "<data>") -> Stage:
         if s["kind"] == "split":
             (r1, c1), (r2, c2) = s["targets"]
             switches.append(Switch(id=s["id"], kind="split", pos=pos, targets=((r1, c1), (r2, c2))))
+        elif "actions" in s:
+            switches.append(Switch(id=s["id"], kind=s["kind"], pos=pos, actions=tuple((b, a) for b, a in s["actions"])))
         else:
             switches.append(Switch(
                 id=s["id"],
@@ -373,6 +409,8 @@ def stage_to_dict(stage: Stage) -> dict[str, Any]:
             d: dict[str, Any] = {"id": s.id, "kind": s.kind, "pos": list(s.pos)}
             if s.kind == "split":
                 d["targets"] = [list(p) for p in s.targets]
+            elif s.mode is None:
+                d["actions"] = [[b, a] for b, a in s.actions]
             else:
                 d["mode"] = s.mode
                 if s.mode == "permanent":
