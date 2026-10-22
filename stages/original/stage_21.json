@@ -1,0 +1,24 @@
+{
+  "id": "stage_21",
+  "group": "G3",
+  "grid": [
+    "........##.....",
+    ".......###.....",
+    "##..######.....",
+    "#S####..#......",
+    "####....#...###",
+    ".##.....#####G#",
+    "..#.....##..###",
+    "..###B..##.....",
+    "...###..##.....",
+    "...B######....."
+  ],
+  "bridges": [
+    {"id": "bridgeA", "cells": [[9, 3]], "initially_open": false},
+    {"id": "bridgeB", "cells": [[7, 5]], "initially_open": false}
+  ],
+  "switches": [
+    {"id": "s1", "kind": "heavy", "pos": [5, 8], "mode": "toggle", "bridges": ["bridgeA"]},
+    {"id": "s2", "kind": "heavy", "pos": [6, 8], "mode": "toggle", "bridges": ["bridgeB"]}
+  ]
+}

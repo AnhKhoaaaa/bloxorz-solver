@@ -1,0 +1,12 @@
+{
+  "id": "fixture_split",
+  "group": "G3",
+  "grid": [
+    "S###...",
+    ".......",
+    "######G"
+  ],
+  "switches": [
+    {"id": "s1", "kind": "split", "pos": [0, 3], "targets": [[2, 0], [2, 2]]}
+  ]
+}
