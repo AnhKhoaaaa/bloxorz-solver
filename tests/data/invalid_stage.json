@@ -1,0 +1,10 @@
+{
+  "id": "invalid_stage",
+  "group": "G9",
+  "grid": [
+    "S##B#G"
+  ],
+  "switches": [
+    {"id": "s1", "kind": "soft", "pos": [0, 9], "mode": "toggle", "bridges": ["nope"]}
+  ]
+}
