@@ -1,0 +1,36 @@
+{
+  "id": "stage_33",
+  "group": "G3",
+  "grid": [
+    ".....######....",
+    ".....######B...",
+    "###..#########.",
+    "#S#BB#########.",
+    ".....#########.",
+    ".....#########.",
+    "###..##########",
+    "#G#BB###..#####",
+    "###..###...####",
+    "###.........###"
+  ],
+  "bridges": [
+    {"id": "bridgeA", "cells": [[3, 3], [3, 4]], "initially_open": true},
+    {"id": "bridgeB", "cells": [[7, 3], [7, 4]], "initially_open": true},
+    {"id": "bridgeC", "cells": [[1, 11]], "initially_open": false}
+  ],
+  "switches": [
+    {"id": "s1", "kind": "soft", "pos": [0, 7], "mode": "permanent", "set_to": "close", "bridges": ["bridgeB"]},
+    {"id": "s2", "kind": "soft", "pos": [2, 5], "mode": "permanent", "set_to": "close", "bridges": ["bridgeB"]},
+    {"id": "s3", "kind": "soft", "pos": [2, 8], "mode": "permanent", "set_to": "close", "bridges": ["bridgeB"]},
+    {"id": "s4", "kind": "soft", "pos": [3, 9], "mode": "permanent", "set_to": "close", "bridges": ["bridgeB"]},
+    {"id": "s5", "kind": "soft", "pos": [3, 10], "mode": "permanent", "set_to": "close", "bridges": ["bridgeB"]},
+    {"id": "s6", "kind": "soft", "pos": [3, 13], "mode": "permanent", "set_to": "close", "bridges": ["bridgeB"]},
+    {"id": "s7", "kind": "soft", "pos": [4, 7], "mode": "permanent", "set_to": "close", "bridges": ["bridgeB"]},
+    {"id": "s8", "kind": "soft", "pos": [4, 10], "mode": "permanent", "set_to": "close", "bridges": ["bridgeB"]},
+    {"id": "s9", "kind": "soft", "pos": [5, 11], "mode": "permanent", "set_to": "close", "bridges": ["bridgeB"]},
+    {"id": "s10", "kind": "soft", "pos": [6, 11], "mode": "permanent", "set_to": "close", "bridges": ["bridgeB"]},
+    {"id": "s11", "kind": "soft", "pos": [7, 6], "mode": "permanent", "set_to": "close", "bridges": ["bridgeB"]},
+    {"id": "s12", "kind": "soft", "pos": [7, 13], "mode": "permanent", "set_to": "close", "bridges": ["bridgeB"]},
+    {"id": "s13", "kind": "heavy", "pos": [7, 14], "mode": "permanent", "set_to": "open", "bridges": ["bridgeC"]}
+  ]
+}
