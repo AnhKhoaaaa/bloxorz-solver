@@ -33,8 +33,36 @@ class SearchAborted(Exception):
         super().__init__(status)
         self.status = status
 
+class SearchContext:
+    """
+    Bộ ngữ cảnh điều phối tiến trình tìm kiếm:
+    - Lưu giới hạn (limits) và thời hạn kết thúc (deadline).
+    - Đếm số nút đã mở rộng (expanded).
+    - Cung cấp hàm tick() để thuật toán gọi mỗi khi duyệt một nút.
+    """
+    def __init__(self, limits: Limits | None = None):
+        self.limits = limits or Limits()
+        self.expanded: int = 0
+        self.deadline: float = time.perf_counter() + self.limits.timeout_s
+
+    def tick(self) -> None:
+        """
+        Gọi MỖI LẦN mở rộng một nút trạng thái:
+        - Tăng self.expanded lên 1.
+        - Kiểm tra cờ hủy (cancel) nếu có.
+        - Cứ mỗi 256 nút kiểm tra thời gian hết hạn (deadline) 1 lần bằng bitwise check.
+        """
+        self.expanded += 1
+        # 1. Kiểm tra cờ hủy
+        if self.limits.cancel is not None and self.limits.cancel.is_set():
+            raise SearchAborted("cancelled")
+        # 2. Kiểm tra timeout định kỳ mỗi 256 nút
+        if (self.expanded & 255) == 0:
+            if time.perf_counter() > self.deadline:
+                raise SearchAborted("timeout")
+
 # Kiểu hàm solver: nhận (stage, ctx) -> trả về tuple các Action hoặc None (nếu không giải được)
-SolverFn = Callable[[Stage, "SearchContext"], tuple[Action, ...] | None]
+SolverFn = Callable[[Stage, SearchContext], tuple[Action, ...] | None]
 ALGORITHMS: dict[str, SolverFn] = {}
 
 def register(name: str):
@@ -43,33 +71,6 @@ def register(name: str):
         ALGORITHMS[name] = fn
         return fn
     return decorator
-
-class SearchContext:
-    """
-    Bộ ngữ cảnh điều phối tiến trình tìm kiếm:
-    - Lưu giới hạn (limits) và thời hạn kết thúc (deadline).
-    - Đếm số nút đã mở rộng (expanded).
-    - Cung cấp hàm tick() để thuật toán gọi mỗi khi duyệt một nút.
-    """
-    def __init__(self, limits: Limits = Limits()):
-        self.limits = limits
-        self.expanded: int = 0
-        self.deadline: float = time.perf_counter() + limits.timeout_s
-    def tick(self) -> None:
-        """
-        Gọi MỖI LẦN mở rộng một nút trạng thái:
-        - Tăng self.expanded lên 1.
-        - Kiểm tra cờ hủy (cancel) nếu có.
-        - Cứ mỗi 1000 nút kiểm tra thời gian hết hạn (deadline) 1 lần.
-        """
-        self.expanded += 1
-        # 1. Kiểm tra cờ hủy
-        if self.limits.cancel is not None and self.limits.cancel.is_set():
-            raise SearchAborted("cancelled")
-        # 2. Kiểm tra timeout định kỳ mỗi 1000 nút
-        if self.expanded % 256 == 0:
-            if time.perf_counter() > self.deadline:
-                raise SearchAborted("timeout")
 
 def reconstruct(parents: dict[State, tuple[State, Action] | None], goal: State) -> tuple[Action, ...]:
     """
@@ -97,7 +98,7 @@ def reconstruct(parents: dict[State, tuple[State, Action] | None], goal: State) 
 def run(
     algorithm: str,
     stage: Stage,
-    limits: Limits = Limits(),
+    limits: Limits | None = None,
     measure_memory: bool = False,
 ) -> SearchResult:
     """
@@ -106,6 +107,9 @@ def run(
     - Lượt 2: (Tùy chọn) Đo bộ nhớ RAM đỉnh điểm peak_mem_bytes bằng tracemalloc.
     - Trả về đối tượng SearchResult hoàn chỉnh.
     """
+    if limits is None:
+        limits = Limits()
+
     # 1. Tra cứu thuật toán
     fn = ALGORITHMS.get(algorithm)
     if fn is None:
@@ -187,4 +191,3 @@ def run(
         peak_mem_bytes=peak_mem_bytes,
         message=message,
     )
-    
