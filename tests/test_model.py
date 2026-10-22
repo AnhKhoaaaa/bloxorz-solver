@@ -119,3 +119,33 @@ def test_stage_mappings_immutable():
 
     with pytest.raises(TypeError):
         stage.bridge_at[(1, 1)] = "b2"
+
+
+def test_switch_actions_derivation_and_consistency():
+    """8. Kiểm tra Switch tự động suy ra actions hoặc bridges, và bắt lỗi nếu mâu thuẫn."""
+    # Tự động suy ra actions từ mode='toggle'
+    sw_toggle = Switch(id="s1", kind="soft", pos=(0, 0), mode="toggle", bridges=("b1", "b2"))
+    assert sw_toggle.actions == (("b1", "toggle"), ("b2", "toggle"))
+    assert sw_toggle.bridges == ("b1", "b2")
+
+    # Tự động suy ra actions từ mode='permanent', set_to='close'
+    sw_perm = Switch(id="s2", kind="heavy", pos=(0, 1), mode="permanent", set_to="close", bridges=("b1",))
+    assert sw_perm.actions == (("b1", "close"),)
+
+    # Tự suy bridges khi chỉ truyền actions
+    sw_custom = Switch(id="s3", kind="heavy", pos=(0, 2), actions=(("b1", "open"), ("b2", "close")))
+    assert sw_custom.bridges == ("b1", "b2")
+    assert sw_custom.actions == (("b1", "open"), ("b2", "close"))
+
+    # Truyền cả bridges và actions khớp nhau -> Hợp lệ
+    sw_match = Switch(id="s4", kind="soft", pos=(0, 3), bridges=("b1", "b2"), actions=(("b1", "open"), ("b2", "close")))
+    assert sw_match.bridges == ("b1", "b2")
+
+    # Truyền bridges và actions lệch nhau -> Báo ValueError
+    with pytest.raises(ValueError, match="does not match actions"):
+        Switch(id="s5", kind="soft", pos=(0, 4), bridges=("b1",), actions=(("b2", "open"),))
+
+    # Split switch không có mode cũng không có actions
+    sw_split = Switch(id="s6", kind="split", pos=(1, 1), targets=((1, 0), (1, 2)))
+    assert sw_split.actions == ()
+    assert sw_split.bridges == ()

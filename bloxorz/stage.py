@@ -57,9 +57,14 @@ class Switch:
 
     def __post_init__(self):
         if self.actions:
-            object.__setattr__(self, "actions", tuple((b, a) for b, a in self.actions))
-            if not self.bridges:
-                object.__setattr__(self, "bridges", tuple(b for b, _ in self.actions))
+            acts = tuple((b, a) for b, a in self.actions)
+            object.__setattr__(self, "actions", acts)
+            inferred_bridges = tuple(b for b, _ in acts)
+            if self.bridges and tuple(self.bridges) != inferred_bridges:
+                raise ValueError(
+                    f"bridges {self.bridges} does not match actions {inferred_bridges}"
+                )
+            object.__setattr__(self, "bridges", inferred_bridges)
         elif self.mode is not None:
             action = "toggle" if self.mode == "toggle" else self.set_to
             object.__setattr__(self, "actions", tuple((b, action) for b in self.bridges))
