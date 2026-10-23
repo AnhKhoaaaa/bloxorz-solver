@@ -186,3 +186,13 @@ def test_malformed_json():
 def test_duplicate_stage_ids_in_directory():
     with pytest.raises(StageFormatError, match="duplicate stage id 'dup'"):
         load_stages(DATA / "duplicate_ids")
+
+
+@pytest.mark.parametrize("path", [DATA / "khong_ton_tai", DATA / "malformed.json"], ids=["missing", "file"])
+def test_load_stages_requires_existing_directory(path):
+    with pytest.raises(FileNotFoundError, match="stage directory not found"):
+        load_stages(path)
+
+
+def test_load_stages_empty_directory(tmp_path):
+    assert load_stages(tmp_path) == []

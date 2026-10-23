@@ -381,8 +381,14 @@ def load_stage(path: str | Path) -> Stage:
 
 
 def load_stages(directory: str | Path) -> list[Stage]:
-    """Đọc mọi file *.json trong thư mục, sắp theo tên file. Ném lỗi nếu trùng id màn."""
-    stages = [load_stage(p) for p in sorted(Path(directory).glob("*.json"))]
+    """
+    Đọc mọi file *.json trong thư mục, sắp theo tên file. Ném lỗi nếu trùng id màn.
+    Ném FileNotFoundError nếu thư mục không tồn tại (tránh âm thầm trả [] khi gõ sai đường dẫn).
+    """
+    d = Path(directory)
+    if not d.is_dir():
+        raise FileNotFoundError(f"stage directory not found: {directory}")
+    stages = [load_stage(p) for p in sorted(d.glob("*.json"))]
     seen: dict[str, int] = {}
     for st in stages:
         seen[st.id] = seen.get(st.id, 0) + 1
