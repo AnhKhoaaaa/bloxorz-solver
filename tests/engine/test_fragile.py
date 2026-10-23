@@ -111,11 +111,15 @@ def test_lying_vertical_half_floor_half_fragile(mixed_fragile_stage):
     assert is_valid_state(state_vert_half, mixed_fragile_stage) is True
 
 
-def test_lying_vertical_half_bridge_half_fragile(mixed_fragile_stage):
+def test_lying_vertical_half_bridge_half_fragile():
     """Khối nằm dọc đè qua 1 ô cầu mở và 1 ô fragile -> an toàn."""
-    # Giả sử ô (0, 1) và (1, 1)
+    stage = Stage(
+        id="bridge_fragile_stage", group="G2", grid=("#B#", "#x#", "##G"),
+        start=(0, 0), goal=(2, 2),
+        bridges=(Bridge(id="b1", cells=((0, 1),), initially_open=True),),
+    )
     state = State(Pose.VERTICAL, (0, 1), bridges_open=frozenset(["b1"]))
-    assert is_valid_state(state, mixed_fragile_stage) is True
+    assert is_valid_state(state, stage) is True
 
 
 # 4. Khối nằm đè qua ô dễ vỡ nhưng có 1 ô rơi vào void/cầu đóng
