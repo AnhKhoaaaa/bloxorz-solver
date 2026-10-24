@@ -20,4 +20,7 @@ __all__ = [
     "reconstruct",
     "register",
     "run",
+    "bfs",
 ]
+
+from . import bfs
