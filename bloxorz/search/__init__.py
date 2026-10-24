@@ -10,6 +10,8 @@ from .base import (
     register,
     run,
 )
+from .cost import move_cost  # noqa: F401 – public API VT5
+from . import ucs  # noqa: F401 – đăng ký @register("ucs")
 
 __all__ = [
     "ALGORITHMS",
@@ -17,7 +19,9 @@ __all__ = [
     "SearchAborted",
     "SearchContext",
     "SearchResult",
+    "move_cost",
     "reconstruct",
     "register",
     "run",
+    "ucs",
 ]
