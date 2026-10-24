@@ -5,6 +5,7 @@ Mock scene dùng cho việc kiểm thử UI khi không có 3D.
 - Scene: giao diện tối thiểu mà app.py gọi tới cảnh vẽ. SceneView 3D (VT3, task 3.1) cần có
   đủ các hàm này để thay thế FakeScene.
 - FakeScene: cảnh giả, ghi lại các sự kiện (dùng trong test) và vẽ màn chơi bằng ký tự.
+- KeyBuffer: chặn phím khi scene đang diễn hoạt, giữ lại tối đa 1 phím để chạy khi hoạt ảnh xong.
 - run_text(): chơi tay ngay trong terminal, không cần Ursina (python main.py --text).
 """
 
@@ -23,7 +24,7 @@ BRIDGE_OPEN = "="
 BRIDGE_CLOSED = "-"
 SWITCH_CHARS = {"soft": "o", "heavy": "x", "split": "*"}
 
-HELP = "W/A/S/D: lăn khối   R: chơi lại   U: lùi 1 bước   N/P: màn sau/trước   Q: thoát"
+HELP = "W/A/S/D: lăn khối   Space: đổi khối khi tách   R: chơi lại   U: lùi 1 bước   N/P: màn sau/trước   Q: thoát"
 
 
 class Scene(Protocol):
@@ -39,6 +40,9 @@ class Scene(Protocol):
     def on_win(self, state: State) -> None:
         """Khối đứng vào lỗ đích."""
 
+    def is_animating(self) -> bool:
+        """True khi scene đang bận diễn hoạt (khối đang lăn, rơi, ...); app sẽ giữ phím lại."""
+
 
 class FakeScene:
     """Cảnh giả: lưu sự kiện vào events và vẽ được màn hiện tại bằng render()."""
@@ -47,6 +51,10 @@ class FakeScene:
         self.events: list[tuple] = []
         self.stage: Stage | None = None
         self.state: State | None = None
+        self.animating = False  # test đặt True để giả lập hoạt ảnh đang chạy
+
+    def is_animating(self) -> bool:
+        return self.animating
 
     def load_stage(self, stage: Stage, state: State) -> None:
         self.stage, self.state = stage, state
@@ -99,10 +107,38 @@ def apply_key(controller: GameController, scene: Scene, key: str) -> str | None:
     return result
 
 
+class KeyBuffer:
+    """
+    Cổng nhận phím cho app: khi scene.is_animating() thì không chạy phím ngay mà giữ lại
+    phím mới nhất (tối đa 1); flush() được gọi mỗi frame để chạy phím đó khi hoạt ảnh xong.
+    Tránh việc giữ/spam phím làm controller chạy trước hoạt ảnh nhiều bước.
+    """
+
+    def __init__(self, controller: GameController, scene: Scene) -> None:
+        self.controller = controller
+        self.scene = scene
+        self.pending: str | None = None
+
+    def press(self, key: str) -> str | None:
+        if self.scene.is_animating():
+            self.pending = key
+            return None
+        self.pending = None
+        return apply_key(self.controller, self.scene, key)
+
+    def flush(self) -> str | None:
+        if self.pending is None or self.scene.is_animating():
+            return None
+        key, self.pending = self.pending, None
+        return apply_key(self.controller, self.scene, key)
+
+
 def hud_text(controller: GameController) -> str:
-    """Dòng trạng thái: tên màn, số bước, thông báo thắng/rơi."""
+    """Dòng trạng thái: tên màn, số bước, cube đang chọn khi tách, thông báo thắng/rơi."""
     stage = controller.stage
     text = f"Màn {controller.index + 1}/{len(controller.stages)}: {stage.id} ({stage.group})   Bước: {controller.moves}"
+    if controller.is_split:
+        text += f"   Đang điều khiển khối {controller.active_cube + 1}/2 (Space để đổi)"
     if controller.status == "won":
         text += "   HOÀN THÀNH! Nhấn N để sang màn sau"
     elif controller.status == "fell":
@@ -124,10 +160,10 @@ def run_text(
         write(scene.render())
         write(hud_text(controller))
         try:
-            line = read("> ").strip().lower()
+            line = read("> ").lower()
         except EOFError:
             return
         for key in line:
             if key == "q":
                 return
-            apply_key(controller, scene, key)
+            apply_key(controller, scene, "space" if key == " " else key)
