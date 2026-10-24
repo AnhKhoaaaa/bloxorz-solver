@@ -3,6 +3,7 @@
 from .base import (
     ALGORITHMS,
     Limits,
+    ORDERED_DIRECTIONS,
     SearchAborted,
     SearchContext,
     SearchResult,
@@ -16,6 +17,7 @@ from . import ucs  # noqa: F401 – đăng ký @register("ucs")
 __all__ = [
     "ALGORITHMS",
     "Limits",
+    "ORDERED_DIRECTIONS",
     "SearchAborted",
     "SearchContext",
     "SearchResult",

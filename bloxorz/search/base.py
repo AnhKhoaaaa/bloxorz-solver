@@ -7,8 +7,16 @@ import time
 import tracemalloc
 from dataclasses import dataclass, field
 from typing import Callable, Any
-from bloxorz.model import Action, State
+from bloxorz.model import Action, Direction, State
 from bloxorz.stage import Stage
+
+# Thứ tự duyệt rẽ nhánh chuẩn toàn dự án để đảm bảo tính công bằng và tất định khi Benchmark:
+ORDERED_DIRECTIONS: tuple[Direction, ...] = (
+    Direction.UP,
+    Direction.DOWN,
+    Direction.LEFT,
+    Direction.RIGHT,
+)
 
 @dataclass(frozen=True)
 class Limits:
