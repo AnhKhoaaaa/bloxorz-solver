@@ -15,6 +15,7 @@ from typing import Sequence
 
 from bloxorz.model import Action, Direction, Pose, Pos, State
 from bloxorz.stage import Stage
+from .switches import trigger_switches
 
 # Ký hiệu ô gạch dễ vỡ trên bản đồ ('F' theo quy chuẩn repo, 'x'/'o' để tương thích)
 FRAGILE_TILES: frozenset[str] = frozenset({"F", "f", "x", "X", "o", "O"})
@@ -170,20 +171,37 @@ def step(state: State, action: Action, stage: Stage) -> State | None:
     """
     Thực hiện lăn khối theo một Action:
     - Tính toán tư thế và vị trí mới qua roll_transition.
-    - Kiểm tra tính hợp lệ qua is_valid_state.
-    - Trả về State mới nếu hợp lệ, hoặc None nếu khối bị rơi khỏi mép bàn/void/gãy gạch.
+    - Kiểm tra tính an toàn khi tiếp đất (dựa trên trạng thái cầu hiện tại).
+    - Kích hoạt các công tắc (soft/heavy) nếu có trên các ô tiếp đất, cập nhật bridges_open.
+    - Kiểm tra lại tính an toàn sau khi cập nhật cầu (tránh trường hợp cầu dưới chân bị sập).
+    - Trả về State mới nếu hợp lệ, hoặc None nếu khối bị rơi khỏi mép bàn/void/gãy gạch/sập cầu.
     """
     if state.pose is None:
         # Xử lý khối phân tách sẽ do split.py xử lý chuyên sâu
         return None
 
     new_pose, new_pos = roll_transition(state.pose, state.pos, action.direction)
-    new_state = State(
+
+    # 1. Kiểm tra an toàn tại thời điểm tiếp đất (dựa trên trạng thái cầu hiện tại)
+    landing_state = State(
         pose=new_pose,
         pos=new_pos,
         bridges_open=state.bridges_open,
     )
+    if not is_valid_state(landing_state, stage):
+        return None
 
+    # 2. Khối tiếp đất an toàn; kích hoạt các công tắc (nếu có)
+    cells = get_block_cells(new_pose, new_pos)
+    new_bridges_open = trigger_switches(stage, new_pose, cells, state.bridges_open)
+
+    new_state = State(
+        pose=new_pose,
+        pos=new_pos,
+        bridges_open=new_bridges_open,
+    )
+
+    # 3. Kiểm tra lại an toàn (phòng trường hợp công tắc làm sập cầu dưới chân)
     if not is_valid_state(new_state, stage):
         return None
 

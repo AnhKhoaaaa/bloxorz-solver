@@ -10,6 +10,12 @@ from .rules import (
     roll_transition,
     step,
 )
+from .switches import (
+    apply_bridge_action,
+    apply_switch,
+    can_activate_switch,
+    trigger_switches,
+)
 
 __all__ = [
     "FRAGILE_TILES",
@@ -20,4 +26,8 @@ __all__ = [
     "is_valid_state",
     "roll_transition",
     "step",
+    "apply_bridge_action",
+    "apply_switch",
+    "can_activate_switch",
+    "trigger_switches",
 ]
