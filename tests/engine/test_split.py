@@ -226,15 +226,10 @@ def test_step_split_moves_cube_1(split_state, flat_stage):
     assert new_s.cube2 == (1, 3)
 
 
-def test_step_split_default_cube_is_zero(split_state, flat_stage):
-    """Nếu action.cube is None, mặc định di chuyển cube 0."""
-    action = Action(direction=Direction.DOWN)  # cube=None
-    new_s = step(split_state, action, flat_stage)
-    assert new_s is not None
-    assert new_s.pos == (1, 4) or new_s.cube2 == (1, 4)
-    # Tọa độ mới là (2, 1) và (1, 4) chuẩn hóa
-    assert (2, 1) in (new_s.pos, new_s.cube2)
-    assert (1, 4) in (new_s.pos, new_s.cube2)
+def test_step_split_cube_none_returns_none(split_state, flat_stage):
+    """Khi ở trạng thái phân tách, action.cube bắt buộc phải là 0 hoặc 1; nếu None -> trả về None."""
+    action_none = Action(direction=Direction.DOWN)
+    assert step(split_state, action_none, flat_stage) is None
 
 
 def test_step_split_collision_returns_none(flat_stage):

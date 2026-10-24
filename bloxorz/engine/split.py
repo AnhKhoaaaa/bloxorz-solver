@@ -134,7 +134,7 @@ def split_block(stage: Stage, state: State, switch: Switch) -> State | None:
 def step_split(state: State, action: Action, stage: Stage) -> State | None:
     """
     Thực hiện 1 bước di chuyển khi khối đang ở trạng thái phân tách thành 2 cube 1x1x1:
-    - action.cube: chỉ định cube di chuyển (0 hoặc 1). Mặc định là 0 nếu None.
+    - action.cube: bắt buộc phải chỉ định cube di chuyển (0 hoặc 1). Nếu None hoặc không hợp lệ -> trả về None.
     - action.direction: hướng di chuyển (UP, DOWN, LEFT, RIGHT).
     - Kiểm tra va chạm với cube còn lại.
     - Kiểm tra ô đích an toàn (biên, void, cầu đóng, không rơi vào Goal).
@@ -145,10 +145,11 @@ def step_split(state: State, action: Action, stage: Stage) -> State | None:
     if state.pose is not None or state.cube2 is None:
         return None
 
-    # Xác định cube được chọn để di chuyển: 0 (state.pos) hoặc 1 (state.cube2)
-    moving_cube = 0 if action.cube is None else action.cube
-    if moving_cube not in (0, 1):
+    # Ở trạng thái phân tách, action bắt buộc phải chỉ định rõ cube (0 hoặc 1)
+    if action.cube not in (0, 1):
         return None
+
+    moving_cube = action.cube
 
     if moving_cube == 0:
         p_moving = state.pos
