@@ -95,3 +95,8 @@ git push -u origin feat/<mã_task>-<mô tả ngắn>
 4. **Quy trình thay đổi Contract (Khung dữ liệu / Giao tiếp chung):**
    - Không tự ý thay đổi tên hàm, tham số truyền vào, cấu trúc trả về của các class/hàm trong `model.py`, `stage.py`, `rules.py` hay định dạng file JSON màn chơi.
    - Khi cần đổi: đề xuất lên Zalo (nêu rõ lý do và module bị ảnh hưởng) $\rightarrow$ thống nhất với Lead và các bên liên quan trước khi sửa.
+5. **Quy ước thứ tự duyệt rẽ nhánh (Tie-breaking convention):**
+   - Để đảm bảo tính khách quan, công bằng và tái lập được (deterministic) khi chạy Benchmark so sánh các thuật toán (BFS, DFS, UCS, A*), tất cả solver **bắt buộc** phải duyệt các hướng di chuyển theo thứ tự ưu tiên cố định:
+     `Direction.UP -> Direction.DOWN -> Direction.LEFT -> Direction.RIGHT`
+   - Bắt buộc import và sử dụng hằng số `ORDERED_DIRECTIONS` từ `bloxorz.search.base` (hoặc `bloxorz.search`).
+

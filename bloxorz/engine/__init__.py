@@ -10,6 +10,18 @@ from .rules import (
     roll_transition,
     step,
 )
+from .split import (
+    is_adjacent,
+    split_block,
+    step_split,
+    try_merge_cubes,
+)
+from .switches import (
+    apply_bridge_action,
+    apply_switch,
+    can_activate_switch,
+    trigger_switches,
+)
 
 __all__ = [
     "FRAGILE_TILES",
@@ -20,4 +32,12 @@ __all__ = [
     "is_valid_state",
     "roll_transition",
     "step",
+    "apply_bridge_action",
+    "apply_switch",
+    "can_activate_switch",
+    "trigger_switches",
+    "is_adjacent",
+    "split_block",
+    "step_split",
+    "try_merge_cubes",
 ]

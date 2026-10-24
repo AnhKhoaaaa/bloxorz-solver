@@ -15,6 +15,8 @@ from typing import Sequence
 
 from bloxorz.model import Action, Direction, Pose, Pos, State
 from bloxorz.stage import Stage
+from .split import split_block, step_split
+from .switches import trigger_switches
 
 # Ký hiệu ô gạch dễ vỡ trên bản đồ ('F' theo quy chuẩn repo, 'x'/'o' để tương thích)
 FRAGILE_TILES: frozenset[str] = frozenset({"F", "f", "x", "X", "o", "O"})
@@ -168,22 +170,48 @@ def is_goal(state: State, stage: Stage) -> bool:
 
 def step(state: State, action: Action, stage: Stage) -> State | None:
     """
-    Thực hiện lăn khối theo một Action:
-    - Tính toán tư thế và vị trí mới qua roll_transition.
-    - Kiểm tra tính hợp lệ qua is_valid_state.
-    - Trả về State mới nếu hợp lệ, hoặc None nếu khối bị rơi khỏi mép bàn/void/gãy gạch.
+    Thực hiện di chuyển khối theo một Action:
+    - Nếu khối đang ở trạng thái phân tách thành 2 cube 1x1 (state.pose is None):
+      uỷ quyền xử lý cho step_split.
+    - Nếu khối nguyên vẹn 1x1x2:
+      * Tính toán tư thế và vị trí mới qua roll_transition.
+      * Kiểm tra tính an toàn khi tiếp đất (dựa trên trạng thái cầu hiện tại).
+      * Nếu đứng trên split switch: phân tách thành 2 cube qua split_block.
+      * Kích hoạt các công tắc (soft/heavy) nếu có trên các ô tiếp đất, cập nhật bridges_open.
+      * Kiểm tra lại tính an toàn sau khi cập nhật cầu (tránh trường hợp cầu dưới chân bị sập).
+      * Trả về State mới nếu hợp lệ, hoặc None nếu khối bị rơi khỏi mép bàn/void/gãy gạch/sập cầu.
     """
     if state.pose is None:
-        # Xử lý khối phân tách sẽ do split.py xử lý chuyên sâu
-        return None
+        return step_split(state, action, stage)
 
     new_pose, new_pos = roll_transition(state.pose, state.pos, action.direction)
-    new_state = State(
+
+    # 1. Kiểm tra an toàn tại thời điểm tiếp đất (dựa trên trạng thái cầu hiện tại)
+    landing_state = State(
         pose=new_pose,
         pos=new_pos,
         bridges_open=state.bridges_open,
     )
+    if not is_valid_state(landing_state, stage):
+        return None
 
+    # 2. Khối tiếp đất an toàn: Kiểm tra kích hoạt công tắc phân tách (split switch)
+    if new_pose == Pose.STANDING:
+        sw = stage.switch_at.get(new_pos)
+        if sw is not None and sw.kind == "split":
+            return split_block(stage, landing_state, sw)
+
+    # 3. Kích hoạt các công tắc thường (soft/heavy) nếu có
+    cells = get_block_cells(new_pose, new_pos)
+    new_bridges_open = trigger_switches(stage, new_pose, cells, state.bridges_open)
+
+    new_state = State(
+        pose=new_pose,
+        pos=new_pos,
+        bridges_open=new_bridges_open,
+    )
+
+    # 4. Kiểm tra lại an toàn (phòng trường hợp công tắc làm sập cầu dưới chân)
     if not is_valid_state(new_state, stage):
         return None
 

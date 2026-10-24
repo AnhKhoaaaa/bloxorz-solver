@@ -3,36 +3,24 @@
 
 from __future__ import annotations
 from collections import deque
-from bloxorz.model import Action, Direction, State
+from bloxorz.model import Action, State
 from bloxorz.stage import Stage
 from bloxorz.engine import initial_state, is_goal, step
-from .base import register, reconstruct, SearchContext
+from .base import ORDERED_DIRECTIONS, SearchContext, reconstruct, register
 
-DIRECTIONS = (Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT)
 
 def get_available_actions(state: State) -> tuple[Action, ...]:
     """
-    Sinh danh sách các hành động hợp lệ tùy theo trạng thái khối:
-    - Khối nguyên vẹn (pose is not None): 4 hướng di chuyển (UP, DOWN, LEFT, RIGHT).
-    - Khối phân tách thành 2 cube 1x1 (pose is None): 4 hướng cho cube 0 và 4 hướng cho cube 1.
+    Sinh danh sách các hành động hợp lệ tùy theo trạng thái khối theo thứ tự ORDERED_DIRECTIONS:
+    - Khối nguyên vẹn (pose is not None): các hướng trong ORDERED_DIRECTIONS.
+    - Khối phân tách (pose is None): các hướng trong ORDERED_DIRECTIONS cho cube 0 rồi cube 1.
     """
     if state.pose is not None:
-        return (
-            Action(Direction.UP),
-            Action(Direction.DOWN),
-            Action(Direction.LEFT),
-            Action(Direction.RIGHT),
-        )
-    return (
-        Action(Direction.UP, cube=0),
-        Action(Direction.DOWN, cube=0),
-        Action(Direction.LEFT, cube=0),
-        Action(Direction.RIGHT, cube=0),
-        Action(Direction.UP, cube=1),
-        Action(Direction.DOWN, cube=1),
-        Action(Direction.LEFT, cube=1),
-        Action(Direction.RIGHT, cube=1),
+        return tuple(Action(d) for d in ORDERED_DIRECTIONS)
+    return tuple(Action(d, cube=0) for d in ORDERED_DIRECTIONS) + tuple(
+        Action(d, cube=1) for d in ORDERED_DIRECTIONS
     )
+
 
 @register("bfs")
 def bfs(stage: Stage, ctx: SearchContext) -> tuple[Action, ...] | None:
@@ -46,10 +34,10 @@ def bfs(stage: Stage, ctx: SearchContext) -> tuple[Action, ...] | None:
 
     while frontier:
         curr = frontier.popleft()
-        ctx.tick()  
+        ctx.tick()
 
         for action in get_available_actions(curr):
-            nxt = step (curr, action, stage)
+            nxt = step(curr, action, stage)
             if nxt is None:
                 continue
             if nxt not in parents:
@@ -57,6 +45,5 @@ def bfs(stage: Stage, ctx: SearchContext) -> tuple[Action, ...] | None:
                 if is_goal(nxt, stage):
                     return reconstruct(parents, nxt)
                 frontier.append(nxt)
-                
-    return None
 
+    return None
