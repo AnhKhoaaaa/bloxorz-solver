@@ -284,3 +284,17 @@ def test_make_scene_uses_scene_view(monkeypatch):
     module.SceneView = FakeScene
     monkeypatch.setitem(sys.modules, SCENE_MODULE, module)
     assert isinstance(make_scene(fallback=lambda: None), FakeScene)
+
+
+def test_active_cube_follows_moved_cube_after_reorder():
+    # cube 0 ở (0,0), cube 1 ở (0,2): cube 0 đi xuống (1,0) > (0,2) nên State đổi chỗ 2 cube
+    g = GameController([stage(["S#####", "######", "#####G"])])
+    g.state = State(None, (0, 0), (0, 2))
+    assert g.move(D) == "moved"
+    assert g.state.pos == (0, 2) and g.state.cube2 == (1, 0)
+    assert g.active_cube == 1  # viên vừa đi giờ nằm ở cube2
+    g.move(R)
+    assert g.last_action.cube == 1 and g.state.cube2 == (1, 1)  # vẫn đi đúng viên đó
+    g.undo()
+    g.undo()
+    assert g.state.pos == (0, 0) and g.active_cube == 0
