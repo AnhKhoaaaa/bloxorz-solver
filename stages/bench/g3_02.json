@@ -1,0 +1,40 @@
+{
+  "id": "g3_02",
+  "group": "G3",
+  "grid": [
+    "S###BB###G"
+  ],
+  "bridges": [
+    {
+      "id": "b1",
+      "cells": [
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          5
+        ]
+      ],
+      "initially_open": false
+    }
+  ],
+  "switches": [
+    {
+      "id": "s1",
+      "kind": "heavy",
+      "pos": [
+        0,
+        3
+      ],
+      "mode": "permanent",
+      "set_to": "open",
+      "bridges": [
+        "b1"
+      ]
+    }
+  ],
+  "source": "team (fixture_bridge_heavy)",
+  "note": "Cầu đóng mở bằng công tắc nặng heavy switch (chỉ kích hoạt khi đứng thẳng)."
+}

@@ -30,6 +30,7 @@ KEY_COMMANDS: dict[str, str] = {
     "u": "undo", "backspace": "undo",
     "n": "next", "page down": "next",
     "p": "prev", "page up": "prev",
+    "space": "switch",
 }
 
 
@@ -39,6 +40,8 @@ class GameController:
     - move(direction): lăn khối 1 bước, trả "moved" | "won" | "fell" | "ignored".
     - restart(), undo(), next_stage(), prev_stage(), load(index).
     - Sau khi thắng/rơi, mọi nước đi bị bỏ qua cho tới khi restart/undo/chuyển màn.
+    - Khi khối đã tách (state.pose is None): nước đi điều khiển cube active_cube (0 hoặc 1),
+      switch_cube() (phím Space) đổi cube đang chọn.
     """
 
     def __init__(self, stages: Sequence[Stage], index: int = 0):
@@ -60,13 +63,27 @@ class GameController:
         self.state: State = initial_state(self.stage)
         self.status: Status = "playing"
         self.moves = 0
-        self.history: list[State] = []
+        self.history: list[tuple[State, int]] = []  # (state, active_cube) trước mỗi nước đi
         self.last_action: Action | None = None
+        self.active_cube = 0
+
+    @property
+    def is_split(self) -> bool:
+        return self.state.pose is None
+
+    def switch_cube(self) -> bool:
+        """Đổi cube đang điều khiển. Trả False nếu khối chưa tách."""
+        if not self.is_split:
+            return False
+        self.active_cube = 1 - self.active_cube
+        return True
 
     def move(self, direction: Direction) -> Outcome:
         if self.status != "playing":
             return "ignored"
-        action = Action(direction)
+        action = Action(direction, cube=self.active_cube if self.is_split else None)
+        # Cube đứng yên trong nước này (chỉ dùng khi đang tách)
+        still = (self.state.cube2 if self.active_cube == 0 else self.state.pos) if self.is_split else None
         self.last_action = action
         self.moves += 1
         new = step(self.state, action, self.stage)
@@ -74,8 +91,13 @@ class GameController:
             # Giữ nguyên state trước khi rơi để scene vẽ hoạt ảnh rơi từ đúng chỗ
             self.status = "fell"
             return "fell"
-        self.history.append(self.state)
+        self.history.append((self.state, self.active_cube))
         self.state = new
+        if new.pose is None:
+            # State luôn chuẩn hóa pos < cube2 nên viên vừa đi có thể bị đổi chỗ sang cube2:
+            # chọn lại đúng viên vừa đi để nước sau không "nhảy khối".
+            # Vừa tách từ khối nguyên (still is None) thì chọn cube 0.
+            self.active_cube = 1 if new.pos == still else 0
         if is_goal(new, self.stage):
             self.status = "won"
             return "won"
@@ -89,7 +111,7 @@ class GameController:
             return True
         if not self.history:
             return False
-        self.state = self.history.pop()
+        self.state, self.active_cube = self.history.pop()
         self.status = "playing"
         self.moves -= 1
         return True
@@ -109,7 +131,7 @@ class GameController:
     def handle_key(self, key: str) -> str | None:
         """
         Xử lý 1 phím. Trả về tên việc đã làm để UI cập nhật:
-        "moved" | "won" | "fell" | "ignored" (phím hướng), "restart" | "undo" | "next" | "prev",
+        "moved" | "won" | "fell" | "ignored" (phím hướng), "restart" | "undo" | "next" | "prev" | "switch",
         hoặc None nếu phím không dùng / lệnh không thực hiện được.
         """
         if key in KEY_DIRECTIONS:
@@ -122,5 +144,7 @@ class GameController:
         elif command == "next" and not self.next_stage():
             return None
         elif command == "prev" and not self.prev_stage():
+            return None
+        elif command == "switch" and not self.switch_cube():
             return None
         return command

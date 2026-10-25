@@ -1,0 +1,39 @@
+{
+  "id": "g3_01",
+  "group": "G3",
+  "grid": [
+    "S###BB###G"
+  ],
+  "bridges": [
+    {
+      "id": "b1",
+      "cells": [
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          5
+        ]
+      ],
+      "initially_open": false
+    }
+  ],
+  "switches": [
+    {
+      "id": "s1",
+      "kind": "soft",
+      "pos": [
+        0,
+        1
+      ],
+      "mode": "toggle",
+      "bridges": [
+        "b1"
+      ]
+    }
+  ],
+  "source": "team (fixture_bridge_soft)",
+  "note": "Cầu đóng mở bằng công tắc mềm soft switch."
+}

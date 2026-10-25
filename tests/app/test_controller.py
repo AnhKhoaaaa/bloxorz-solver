@@ -4,15 +4,19 @@ Kiểm thử khung ứng dụng chơi tay - Task 4.2
 - FakeScene / apply_key: scene nhận đúng sự kiện, vẽ màn bằng ký tự.
 - run_text: chơi trong terminal với input giả lập.
 - main.select_stages: chọn màn theo id hoặc đường dẫn file.
+- Issue #12: chọn cube khi khối tách; #13: KeyBuffer khi scene diễn hoạt; #14: make_scene báo lỗi view.py.
 Không cần Ursina.
 """
 
+import sys
+import types
 from pathlib import Path
 
 import pytest
 
 from bloxorz.gui.controller import GameController
-from bloxorz.gui.fake_scene import FakeScene, apply_key, hud_text, run_text
+from bloxorz.gui.app import SCENE_MODULE, make_scene
+from bloxorz.gui.fake_scene import FakeScene, KeyBuffer, apply_key, hud_text, run_text
 from bloxorz.loader import load_stage, load_stages, parse_stage
 from bloxorz.model import Direction, Pose, State
 from main import select_stages
@@ -115,7 +119,7 @@ def test_command_keys(game):
     assert game.handle_key("r") == "restart" and game.moves == 0
     assert game.handle_key("n") is None           # chỉ có 1 màn
     assert game.handle_key("p") is None
-    assert game.handle_key("space") is None       # phím chưa dùng (tách khối: task 4.4)
+    assert game.handle_key("space") is None       # chưa tách khối thì Space không làm gì
 
 
 # ---------- FakeScene + apply_key ----------
@@ -196,3 +200,101 @@ def test_select_stages_errors(tmp_path):
         select_stages(ORIGINAL, "stage_99")
     with pytest.raises(SystemExit, match="Không có file màn"):
         select_stages(tmp_path, None)
+
+
+# ---------- Issue #12: chọn cube khi khối tách ----------
+
+@pytest.fixture
+def split_game():
+    g = GameController([stage(["S#####", "######", "#####G"])])
+    g.state = State(None, (0, 0), (2, 0))  # giả lập khối đã tách (engine 2.4 chưa có)
+    return g
+
+
+def test_split_move_sends_active_cube(split_game):
+    split_game.move(R)
+    assert split_game.last_action.cube == 0
+    split_game.undo()
+    assert split_game.handle_key("space") == "switch" and split_game.active_cube == 1
+    split_game.move(R)
+    assert split_game.last_action.cube == 1
+
+
+def test_intact_block_sends_no_cube(game):
+    game.move(R)
+    assert game.last_action.cube is None
+    assert not game.switch_cube() and game.active_cube == 0
+
+
+def test_switch_cube_resets_on_restart(split_game):
+    split_game.switch_cube()
+    split_game.restart()
+    assert split_game.active_cube == 0 and not split_game.is_split
+
+
+def test_hud_shows_active_cube(split_game, game):
+    assert "Đang điều khiển khối 1/2" in hud_text(split_game)
+    split_game.switch_cube()
+    assert "Đang điều khiển khối 2/2" in hud_text(split_game)
+    assert "Đang điều khiển" not in hud_text(game)
+
+
+def test_run_text_space_key(split_game):
+    inputs = iter([" ", "q"])
+    run_text(split_game, read=lambda _: next(inputs), write=lambda _: None)
+    assert split_game.active_cube == 1
+
+
+# ---------- Issue #13: KeyBuffer khi scene đang diễn hoạt ----------
+
+def test_key_buffer_holds_one_key_while_animating(game):
+    scene = FakeScene()
+    keys = KeyBuffer(game, scene)
+    assert keys.press("d") == "moved"
+    scene.animating = True
+    assert keys.press("d") is None and keys.press("d") is None and keys.press("a") is None
+    assert game.moves == 1 and keys.pending == "a"     # chỉ giữ phím mới nhất
+    assert keys.flush() is None and game.moves == 1     # vẫn đang diễn hoạt
+    scene.animating = False
+    assert keys.flush() == "moved" and game.moves == 2
+    assert keys.pending is None and keys.flush() is None
+
+
+def test_fake_scene_not_animating_by_default():
+    assert FakeScene().is_animating() is False
+
+
+# ---------- Issue #14: make_scene không nuốt lỗi của view.py ----------
+
+def test_make_scene_without_scene_view_uses_fallback(monkeypatch, capsys):
+    monkeypatch.setitem(sys.modules, SCENE_MODULE, types.ModuleType(SCENE_MODULE))
+    assert isinstance(make_scene(fallback=FakeScene), FakeScene)
+    assert "chưa có SceneView" in capsys.readouterr().err
+
+
+def test_make_scene_reports_broken_view(monkeypatch, capsys):
+    monkeypatch.setitem(sys.modules, SCENE_MODULE, None)  # import view.py sẽ ném ImportError
+    assert isinstance(make_scene(fallback=FakeScene), FakeScene)
+    err = capsys.readouterr().err
+    assert "[Cảnh báo] Không nạp được" in err and "Traceback" in err
+
+
+def test_make_scene_uses_scene_view(monkeypatch):
+    module = types.ModuleType(SCENE_MODULE)
+    module.SceneView = FakeScene
+    monkeypatch.setitem(sys.modules, SCENE_MODULE, module)
+    assert isinstance(make_scene(fallback=lambda: None), FakeScene)
+
+
+def test_active_cube_follows_moved_cube_after_reorder():
+    # cube 0 ở (0,0), cube 1 ở (0,2): cube 0 đi xuống (1,0) > (0,2) nên State đổi chỗ 2 cube
+    g = GameController([stage(["S#####", "######", "#####G"])])
+    g.state = State(None, (0, 0), (0, 2))
+    assert g.move(D) == "moved"
+    assert g.state.pos == (0, 2) and g.state.cube2 == (1, 0)
+    assert g.active_cube == 1  # viên vừa đi giờ nằm ở cube2
+    g.move(R)
+    assert g.last_action.cube == 1 and g.state.cube2 == (1, 1)  # vẫn đi đúng viên đó
+    g.undo()
+    g.undo()
+    assert g.state.pos == (0, 0) and g.active_cube == 0

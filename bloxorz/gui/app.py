@@ -9,10 +9,17 @@ trước đó tạm vẽ màn bằng ký tự (TextBoardScene) để vẫn chơi
 
 from __future__ import annotations
 
+import importlib
+import sys
+import traceback
+from typing import Callable
+
 from bloxorz.gui.controller import GameController
-from bloxorz.gui.fake_scene import FakeScene, Scene, apply_key
+from bloxorz.gui.fake_scene import FakeScene, KeyBuffer, Scene
 from bloxorz.model import Action, State
 from bloxorz.stage import Stage
+
+SCENE_MODULE = "bloxorz.gui.scene.view"
 
 
 class TextBoardScene:
@@ -41,13 +48,26 @@ class TextBoardScene:
     def on_win(self, state: State) -> None:
         self.fake.on_win(state)
 
+    def is_animating(self) -> bool:
+        return False
 
-def make_scene() -> Scene:
+
+def make_scene(fallback: Callable[[], Scene] = TextBoardScene) -> Scene:
+    """
+    Dùng SceneView của VT3 (task 3.1) nếu view.py đã có; nếu chưa có thì dùng cảnh tạm.
+    Nếu view.py có lỗi bên trong (import sai, lỗi cú pháp, ...) thì in cảnh báo kèm traceback
+    rồi mới dùng cảnh tạm, để lỗi không bị nuốt mất khi đang phát triển SceneView.
+    """
     try:
-        from bloxorz.gui.scene.view import SceneView  # VT3 - task 3.1
-    except ImportError:
-        return TextBoardScene()
-    return SceneView()
+        view = importlib.import_module(SCENE_MODULE)
+    except Exception:
+        print(f"[Cảnh báo] Không nạp được {SCENE_MODULE}, đang dùng cảnh chữ tạm thời. Chi tiết lỗi:", file=sys.stderr)
+        traceback.print_exc()
+        return fallback()
+    if not hasattr(view, "SceneView"):
+        print(f"[Thông báo] {SCENE_MODULE} chưa có SceneView (task 3.1), đang dùng cảnh chữ tạm thời.", file=sys.stderr)
+        return fallback()
+    return view.SceneView()
 
 
 def run(controller: GameController) -> None:
@@ -65,11 +85,18 @@ def run(controller: GameController) -> None:
     scene.load_stage(controller.stage, controller.state)
     hud.update(controller)
 
+    keys = KeyBuffer(controller, scene)
+
     class KeyInput(Entity):
         def input(self, key: str) -> None:
             if key == "escape":
                 application.quit()
-            elif apply_key(controller, scene, key) is not None:
+            elif keys.press(key) is not None:
+                hud.update(controller)
+
+        def update(self) -> None:
+            # Chạy phím đã giữ lại trong lúc scene diễn hoạt
+            if keys.flush() is not None:
                 hud.update(controller)
 
     KeyInput()
