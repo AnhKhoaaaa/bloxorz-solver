@@ -7,6 +7,8 @@
     {
       "id": "stage_01",
       "group": "G1",
+      "source": "Bloxorz gốc, level 1",
+      "note": "Ví dụ đủ 3 loại công tắc",
       "grid": [
         "S###BB###G"
       ],
@@ -28,6 +30,7 @@ Ký tự trong grid (mỗi chuỗi là 1 hàng, các hàng được phép dài n
 
 Tọa độ luôn là [hàng, cột], (0, 0) ở góc trên-trái, giống Pos trong model.py.
 "bridges" và "switches" có thể bỏ qua (mặc định rỗng). Khóa lạ bị từ chối để bắt lỗi gõ sai.
+"source" (nguồn gốc màn) và "note" (ghi chú) là metadata tùy chọn, nếu có phải là chuỗi.
 
 Ràng buộc:
 - Mỗi ô 'B' thuộc đúng 1 cầu; mọi ô của cầu phải là 'B'.
@@ -57,7 +60,7 @@ SWITCH_MODES = ("toggle", "permanent")
 SET_TO_VALUES = ("open", "close")
 BRIDGE_ACTIONS = ("toggle", "open", "close")
 
-_STAGE_KEYS = {"id", "group", "grid", "bridges", "switches"}
+_STAGE_KEYS = {"id", "group", "grid", "bridges", "switches", "source", "note"}
 _BRIDGE_KEYS = {"id", "cells", "initially_open"}
 _SWITCH_KEYS = {
     "soft": {"id", "kind", "pos", "mode", "set_to", "bridges", "actions"},
@@ -133,6 +136,9 @@ class _Validator:
             self.err("id", "must be a non-empty string")
         if "group" in d and d["group"] not in GROUPS:
             self.err("group", f"must be one of {', '.join(GROUPS)}, got {d['group']!r}")
+        for key in ("source", "note"):
+            if key in d and not isinstance(d[key], str):
+                self.err(key, "must be a string")
 
         self.check_grid(d.get("grid"))
         # Không kiểm tra cầu/công tắc trên lưới hỏng để tránh lỗi dây chuyền khó đọc

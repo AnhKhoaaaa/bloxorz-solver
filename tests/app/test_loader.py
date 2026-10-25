@@ -116,12 +116,20 @@ def test_round_trip():
         assert parse_stage(stage_to_dict(stage)) == stage
 
 
+def test_metadata_keys_are_optional():
+    data = copy.deepcopy(VALID) | {"source": "Bloxorz gốc, level 1", "note": ""}
+    assert validate_stage_data(data) == []
+    assert parse_stage(data) == parse_stage(VALID)
+
+
 # ---------- Bắt lỗi định dạng ----------
 
 @pytest.mark.parametrize("fn, expected", [
     (lambda d: d.pop("id"), "<root>: missing key 'id'"),
     (lambda d: d.update(title="x"), "<root>: unknown key 'title'"),
     (lambda d: d.update(id=""), "id: must be a non-empty string"),
+    (lambda d: d.update(source=1), "source: must be a string"),
+    (lambda d: d.update(note=["x"]), "note: must be a string"),
     (lambda d: d.update(group="G6"), "group: must be one of"),
     (lambda d: d.update(grid=[]), "grid: must be a non-empty list of strings"),
     (lambda d: d["grid"].__setitem__(1, "####x#####"), "grid[1][4]: unknown tile 'x'"),
