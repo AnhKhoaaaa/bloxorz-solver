@@ -1,0 +1,64 @@
+{
+  "id": "g3_04",
+  "group": "G3",
+  "grid": [
+    "............#",
+    ".....###..###",
+    ".....#######B",
+    "...#####..##.",
+    "...#G#B...##.",
+    ".#####...####",
+    "##S#.....####",
+    "####..#####..",
+    ".....###.....",
+    ".....###....."
+  ],
+  "bridges": [
+    {
+      "id": "bridgeA",
+      "cells": [
+        [
+          2,
+          12
+        ]
+      ],
+      "initially_open": false
+    },
+    {
+      "id": "bridgeB",
+      "cells": [
+        [
+          4,
+          6
+        ]
+      ],
+      "initially_open": false
+    }
+  ],
+  "switches": [
+    {
+      "id": "s1",
+      "kind": "heavy",
+      "pos": [
+        0,
+        12
+      ],
+      "mode": "toggle",
+      "bridges": [
+        "bridgeB"
+      ]
+    },
+    {
+      "id": "s2",
+      "kind": "heavy",
+      "pos": [
+        2,
+        6
+      ],
+      "mode": "toggle",
+      "bridges": [
+        "bridgeA"
+      ]
+    }
+  ]
+}

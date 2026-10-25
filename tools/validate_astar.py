@@ -2,6 +2,8 @@
 
 Chạy từ repo: python -m tools.validate_astar [stages/original]
 Không có tham số: dùng fixtures và bench. CSV in ra stdout để lưu nếu cần.
+time_s là tổng; prep_time_s đo tạo heuristic; search_time_s là phần còn lại.
+So sánh expanded để đánh giá mức giảm không gian tìm kiếm, không suy ra tốc độ.
 """
 from __future__ import annotations
 
@@ -18,7 +20,8 @@ def main() -> int:
     directories = [Path(arg) for arg in sys.argv[1:]] or [Path("stages/fixtures"), Path("stages/bench")]
     paths = sorted({path for directory in directories for path in directory.rglob("*.json")})
     writer = csv.writer(sys.stdout, lineterminator="\n")
-    writer.writerow(("stage", "algorithm", "status", "cost", "length", "expanded", "time_s"))
+    writer.writerow(("stage", "algorithm", "status", "cost", "length", "expanded", "time_s",
+                     "prep_time_s", "search_time_s"))
     failed = not paths
     for path in paths:
         stage = load_stage(path)
@@ -26,7 +29,8 @@ def main() -> int:
         for algorithm in ("ucs", "astar", "astar_manhattan"):
             result = run(algorithm, stage, Limits(timeout_s=5.0))
             writer.writerow((stage.id, algorithm, result.status, result.cost,
-                             result.length, result.expanded, f"{result.time_s:.6f}"))
+                             result.length, result.expanded, f"{result.time_s:.6f}",
+                             f"{result.prep_time_s:.6f}", f"{result.search_time_s:.6f}"))
             sys.stdout.flush()
             if reference is None:
                 reference = result

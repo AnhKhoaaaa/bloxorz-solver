@@ -35,6 +35,9 @@ class SearchResult:
     time_s: float = 0.0
     peak_mem_bytes: int | None = None
     message: str = ""
+    # time_s gồm tiền xử lý và tìm kiếm; không gồm lượt đo RAM/replay cost.
+    prep_time_s: float = 0.0
+    search_time_s: float = 0.0
     
 class SearchAborted(Exception):
     def __init__(self, status: str):
@@ -51,6 +54,7 @@ class SearchContext:
     def __init__(self, limits: Limits | None = None):
         self.limits = limits or Limits()
         self.expanded: int = 0
+        self.prep_time_s: float = 0.0
         self.deadline: float = time.perf_counter() + self.limits.timeout_s
 
     def tick(self) -> None:
@@ -198,4 +202,6 @@ def run(
         time_s=time_s,
         peak_mem_bytes=peak_mem_bytes,
         message=message,
+        prep_time_s=ctx.prep_time_s,
+        search_time_s=max(0.0, time_s - ctx.prep_time_s),
     )

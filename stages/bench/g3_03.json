@@ -1,0 +1,112 @@
+{
+  "id": "g3_03",
+  "group": "G3",
+  "grid": [
+    "...........####",
+    ".####BB######S#",
+    ".####.......###",
+    ".####..........",
+    ".####..........",
+    "...#####BB###..",
+    "..........#####",
+    "###.......#####",
+    "#G###BB######..",
+    "####..........."
+  ],
+  "bridges": [
+    {
+      "id": "bridgeA",
+      "cells": [
+        [
+          1,
+          5
+        ],
+        [
+          1,
+          6
+        ]
+      ],
+      "initially_open": true
+    },
+    {
+      "id": "bridgeB",
+      "cells": [
+        [
+          5,
+          8
+        ],
+        [
+          5,
+          9
+        ]
+      ],
+      "initially_open": true
+    },
+    {
+      "id": "bridgeC",
+      "cells": [
+        [
+          8,
+          5
+        ],
+        [
+          8,
+          6
+        ]
+      ],
+      "initially_open": true
+    }
+  ],
+  "switches": [
+    {
+      "id": "s1",
+      "kind": "soft",
+      "pos": [
+        1,
+        8
+      ],
+      "mode": "toggle",
+      "bridges": [
+        "bridgeA"
+      ]
+    },
+    {
+      "id": "s2",
+      "kind": "soft",
+      "pos": [
+        3,
+        3
+      ],
+      "mode": "permanent",
+      "set_to": "open",
+      "bridges": [
+        "bridgeC"
+      ]
+    },
+    {
+      "id": "s3",
+      "kind": "soft",
+      "pos": [
+        5,
+        6
+      ],
+      "mode": "permanent",
+      "set_to": "close",
+      "bridges": [
+        "bridgeC"
+      ]
+    },
+    {
+      "id": "s4",
+      "kind": "soft",
+      "pos": [
+        6,
+        14
+      ],
+      "mode": "toggle",
+      "bridges": [
+        "bridgeC"
+      ]
+    }
+  ]
+}

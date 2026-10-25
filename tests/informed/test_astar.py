@@ -88,3 +88,46 @@ def test_bridge_states_remain_distinct_during_search():
     for algorithm in ("astar", "astar_manhattan"):
         result = run(algorithm, stage)
         assert result.status == "solved" and result.cost == reference.cost
+
+
+def test_equal_f_prefers_lower_h_before_insertion_order(monkeypatch):
+    module = importlib.import_module("bloxorz.search.astar")
+    start, detour, goal = [State(Pose.STANDING, (0, i)) for i in range(3)]
+    up, down = Action(Direction.UP), Action(Direction.DOWN)
+    graph = {(start, up): (detour, 1), (start, down): (goal, 2)}
+    monkeypatch.setattr(module, "initial_state", lambda stage: start)
+    monkeypatch.setattr(module, "is_goal", lambda state, stage: state == goal)
+    monkeypatch.setattr(module, "step", lambda s, a, stage: graph.get((s, a), (None, 0))[0])
+    monkeypatch.setattr(module, "move_cost", lambda s, a, nxt, stage: graph[s, a][1])
+    h = {start: 2, detour: 1, goal: 0}
+    ctx = SearchContext()
+    assert module.best_first(shortcut_stage(), ctx, h.__getitem__) == (down,)
+    # Cả hai nhánh có f=2; goal được sinh sau nhưng h nhỏ hơn, bỏ qua detour.
+    assert ctx.expanded == 2
+
+
+@pytest.mark.parametrize("algorithm", ("astar", "astar_manhattan"))
+@pytest.mark.parametrize("measure_memory", (False, True))
+def test_timing_separates_preparation_and_search(monkeypatch, algorithm, measure_memory):
+    module = importlib.import_module("bloxorz.search.astar")
+    base = importlib.import_module("bloxorz.search.base")
+    clock = [0.0]
+    calls = [0]
+
+    def prepare(stage, name):
+        calls[0] += 1
+        clock[0] += 2.0 * calls[0]
+        return lambda state: 0.0
+
+    def search(stage, ctx, heuristic):
+        clock[0] += 3.0 * calls[0]
+        return ()
+
+    monkeypatch.setattr(base.time, "perf_counter", lambda: clock[0])
+    monkeypatch.setattr(module, "make_heuristic", prepare)
+    monkeypatch.setattr(module, "best_first", search)
+    result = run(algorithm, shortcut_stage(), measure_memory=measure_memory)
+    assert result.status == "solved"
+    assert result.prep_time_s == 2.0
+    assert result.search_time_s == 3.0
+    assert result.time_s == 5.0

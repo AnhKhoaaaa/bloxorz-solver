@@ -59,6 +59,8 @@ def test_run_solved(dummy_stage):
     assert len(res.actions) == 3
     assert res.expanded == 1
     assert res.time_s >= 0.0
+    assert res.prep_time_s == 0.0
+    assert res.search_time_s == res.time_s
 
 
 # 2. Test Unsolvable: Không có lời giải
