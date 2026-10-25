@@ -147,3 +147,24 @@ def test_verify_solution_detects_non_action_objects():
     assert ok is False
     assert "invalid action object" in msg
 
+
+# 10. Test BFS giải màn chơi có cơ chế phân tách (Split switch)
+def test_bfs_split_fixture():
+    stage = load_stage("stages/fixtures/split.json")
+    res = run("bfs", stage)
+    assert res.status == "solved"
+    assert res.length == 6
+    ok, msg = verify_solution(stage, res.actions)
+    assert ok is True
+    assert msg == ""
+
+    # Test verify_solution hiển thị thông tin cube khi bước đi phân tách vi phạm/rơi
+    # res.actions[2] là Action(Direction.RIGHT, cube=0)
+    # Thay bằng Action(Direction.UP, cube=1) khiến cube 1 đi lên ô '.' (vực) và rơi
+    invalid_split_actions = res.actions[:2] + (Action(Direction.UP, cube=1),) + res.actions[3:]
+    ok_inv, msg_inv = verify_solution(stage, invalid_split_actions)
+    assert ok_inv is False
+    assert "cube = 1" in msg_inv
+    assert "Fall or violate" in msg_inv
+
+

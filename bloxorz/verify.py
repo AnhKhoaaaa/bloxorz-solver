@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 from typing import Sequence
+
+from bloxorz.engine import initial_state, is_goal, step
 from bloxorz.model import Action
 from bloxorz.stage import Stage
-from bloxorz.engine import initial_state, step, is_goal
+
+
 def verify_solution(stage: Stage, actions: Sequence[Action]) -> tuple[bool, str]:
     """
     Kiểm tra một chuỗi hành động có đưa khối từ điểm xuất phát về đích an toàn không:
@@ -16,20 +19,23 @@ def verify_solution(stage: Stage, actions: Sequence[Action]) -> tuple[bool, str]
       + Nếu chưa tới đích: trả về (False, "chưa tới đích").
       + Nếu đã tới đích: trả về (True, "").
     """
-    curr=initial_state(stage)
+    curr = initial_state(stage)
 
     for i, action in enumerate(actions):
 
         if not isinstance(action, Action):
             return (False, f"Step {i}: invalid action object {action!r}")
         try:
-            new_state=step(curr, action, stage)
+            new_state = step(curr, action, stage)
         except Exception as e:
-            return (False, f"Step {i} ({action.direction.value}): engine crashed with error {e}")
+            dir_str = action.direction.value if hasattr(action, "direction") else "?"
+            act_info = f"dir = {dir_str}, cube = {action.cube}" if getattr(action, "cube", None) is not None else f"dir = {dir_str}"
+            return (False, f"Step {i} ({act_info}): engine crashed with error {e}")
         
         if new_state is None:
             dir_str = action.direction.value if hasattr(action, "direction") else "?"
-            return (False, f"Step {i} (dir = {dir_str}): Fall or violate the rules!")
+            act_info = f"dir = {dir_str}, cube = {action.cube}" if getattr(action, "cube", None) is not None else f"dir = {dir_str}"
+            return (False, f"Step {i} ({act_info}): Fall or violate the rules!")
         curr = new_state
 
     if is_goal(curr, stage):
