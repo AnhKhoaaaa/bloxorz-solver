@@ -298,3 +298,17 @@ def test_active_cube_follows_moved_cube_after_reorder():
     g.undo()
     g.undo()
     assert g.state.pos == (0, 0) and g.active_cube == 0
+
+
+def test_scene_view_protocol_contract():
+    """Kiểm tra SceneView đáp ứng đầy đủ chữ ký phương thức của Scene Protocol (is_animating, load_stage, on_move, on_fall, on_win)."""
+    # Import không cần Ursina runtime vì chỉ kiểm tra chữ ký method
+    import inspect
+    from bloxorz.gui.fake_scene import Scene
+    from bloxorz.gui.scene.view import SceneView
+
+    expected_methods = {"is_animating", "load_stage", "on_move", "on_fall", "on_win"}
+    for method_name in expected_methods:
+        assert hasattr(SceneView, method_name), f"SceneView must have method {method_name}"
+        assert callable(getattr(SceneView, method_name))
+

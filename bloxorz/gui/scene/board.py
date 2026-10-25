@@ -16,10 +16,12 @@ def grid_to_world(r: int, c: int) -> tuple[float, float, float]:
 
 
 class BoardView:
-    """Quản lý hiển thị 3D của các ô bàn cờ (sàn, đích, khoảng trống)."""
+    """Quản lý hiển thị 3D của các ô bàn cờ (sàn, đích, cầu và công tắc)."""
 
     def __init__(self) -> None:
         self.tile_entities: list[object] = []
+        self.bridge_entities: dict[tuple[int, int], object] = {}
+        self.stage: Stage | None = None
 
     def clear(self) -> None:
         """Xóa toàn bộ các ô sàn hiện có."""
@@ -28,12 +30,24 @@ class BoardView:
         for entity in self.tile_entities:
             destroy(entity)
         self.tile_entities.clear()
+        self.bridge_entities.clear()
+        self.stage = None
+
+    def update_bridges(self, state: State) -> None:
+        """Cập nhật hiển thị đóng/mở của các ô cầu theo state.bridges_open."""
+        if self.stage is None:
+            return
+        for pos, entity in self.bridge_entities.items():
+            bid = self.stage.bridge_at.get(pos)
+            is_open = bid is not None and bid in state.bridges_open
+            entity.visible = is_open
 
     def build(self, stage: Stage, state: State | None = None) -> None:
         """Dựng lại toàn bộ bàn cờ dựa trên thông tin Stage."""
         from ursina import Entity, color
 
         self.clear()
+        self.stage = stage
 
         # Màu sắc các loại ô cơ bản
         FLOOR_COLOR = color.rgb32(180, 185, 195)
@@ -74,18 +88,17 @@ class BoardView:
                         scale=(0.95, 0.15, 0.95),
                     )
                 elif char == "B":
-                    # Ô cầu nối: chỉ vẽ khi cầu đang mở
+                    # Ô cầu nối: tạo entity và đặt trạng thái hiển thị theo bridges_open
                     bid = stage.bridge_at.get((r, c))
                     is_open = state is not None and bid in state.bridges_open
-                    if is_open:
-                        tile = Entity(
-                            model="cube",
-                            color=BRIDGE_COLOR,
-                            position=(x, y, z),
-                            scale=(0.95, 0.2, 0.95),
-                        )
-                    else:
-                        continue
+                    tile = Entity(
+                        model="cube",
+                        color=BRIDGE_COLOR,
+                        position=(x, y, z),
+                        scale=(0.95, 0.2, 0.95),
+                        visible=is_open,
+                    )
+                    self.bridge_entities[(r, c)] = tile
                 else:
                     # Sàn gạch thường '#'
                     tile = Entity(
@@ -96,3 +109,22 @@ class BoardView:
                     )
 
                 self.tile_entities.append(tile)
+
+        # Vẽ các công tắc (Switch) nổi nhẹ trên mặt sàn
+        SWITCH_COLORS = {
+            "soft": color.rgb32(245, 225, 80),    # Vàng tròn/mềm
+            "heavy": color.rgb32(150, 60, 60),    # Đỏ đậm nặng
+            "split": color.rgb32(70, 200, 140),   # Xanh ngọc phân tách
+        }
+        for sw in stage.switches:
+            sx, sy, sz = grid_to_world(sw.pos[0], sw.pos[1])
+            sw_color = SWITCH_COLORS.get(sw.kind, color.white)
+            sw_scale = (0.5, 0.05, 0.5) if sw.kind != "heavy" else (0.65, 0.06, 0.65)
+            sw_tile = Entity(
+                model="cube",
+                color=sw_color,
+                position=(sx, sy + 0.12, sz),
+                scale=sw_scale,
+            )
+            self.tile_entities.append(sw_tile)
+
