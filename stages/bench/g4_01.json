@@ -25,5 +25,7 @@
         ]
       ]
     }
-  ]
+  ],
+  "source": "team (fixture_split)",
+  "note": "Công tắc phân tách split switch; 2 cube điều khiển độc lập và tự ghép lại."
 }

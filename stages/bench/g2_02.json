@@ -7,5 +7,7 @@
     "#######",
     ".#F####",
     "####F#G"
-  ]
+  ],
+  "source": "team",
+  "note": "Màn hai lối: lối tắt ít bước qua ô F (phạt cost) vs lối vòng an toàn tối ưu cost."
 }

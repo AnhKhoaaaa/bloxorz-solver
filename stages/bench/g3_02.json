@@ -34,5 +34,7 @@
         "b1"
       ]
     }
-  ]
+  ],
+  "source": "team (fixture_bridge_heavy)",
+  "note": "Cầu đóng mở bằng công tắc nặng heavy switch (chỉ kích hoạt khi đứng thẳng)."
 }

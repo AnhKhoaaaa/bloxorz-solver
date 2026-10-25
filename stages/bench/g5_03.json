@@ -34,5 +34,7 @@
     }
   ],
   "id": "g5_03",
-  "group": "G5"
+  "group": "G5",
+  "source": "team",
+  "note": "Màn kết hợp hai lối: mở cầu qua công tắc và lựa chọn đường đi tối ưu cost."
 }

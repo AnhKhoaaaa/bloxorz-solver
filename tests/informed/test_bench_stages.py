@@ -91,7 +91,11 @@ def test_original_sources_are_preserved_except_benchmark_id_and_group(stage_id, 
     actual = json.loads((BENCH / f"{stage_id}.json").read_text(encoding="utf-8"))
     source = json.loads((BENCH.parent / "original" / f"stage_{original:02d}.json").read_text(encoding="utf-8"))
     source.update(id=stage_id, group=actual["group"])
+    actual_source = actual.pop("source", None)
+    actual.pop("note", None)
+    assert actual_source == f"original-{original}"
     assert actual == source
+
 
 
 @pytest.mark.parametrize("stage_id", IDS)

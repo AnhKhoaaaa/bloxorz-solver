@@ -33,5 +33,7 @@
         "b1"
       ]
     }
-  ]
+  ],
+  "source": "team (fixture_bridge_soft)",
+  "note": "Cầu đóng mở bằng công tắc mềm soft switch."
 }
