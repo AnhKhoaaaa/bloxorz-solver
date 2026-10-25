@@ -63,7 +63,7 @@ class GameController:
         self.state: State = initial_state(self.stage)
         self.status: Status = "playing"
         self.moves = 0
-        self.history: list[State] = []
+        self.history: list[tuple[State, int]] = []  # (state, active_cube) trước mỗi nước đi
         self.last_action: Action | None = None
         self.active_cube = 0
 
@@ -82,6 +82,8 @@ class GameController:
         if self.status != "playing":
             return "ignored"
         action = Action(direction, cube=self.active_cube if self.is_split else None)
+        # Cube đứng yên trong nước này (chỉ dùng khi đang tách)
+        still = (self.state.cube2 if self.active_cube == 0 else self.state.pos) if self.is_split else None
         self.last_action = action
         self.moves += 1
         new = step(self.state, action, self.stage)
@@ -89,8 +91,13 @@ class GameController:
             # Giữ nguyên state trước khi rơi để scene vẽ hoạt ảnh rơi từ đúng chỗ
             self.status = "fell"
             return "fell"
-        self.history.append(self.state)
+        self.history.append((self.state, self.active_cube))
         self.state = new
+        if new.pose is None:
+            # State luôn chuẩn hóa pos < cube2 nên viên vừa đi có thể bị đổi chỗ sang cube2:
+            # chọn lại đúng viên vừa đi để nước sau không "nhảy khối".
+            # Vừa tách từ khối nguyên (still is None) thì chọn cube 0.
+            self.active_cube = 1 if new.pos == still else 0
         if is_goal(new, self.stage):
             self.status = "won"
             return "won"
@@ -104,7 +111,7 @@ class GameController:
             return True
         if not self.history:
             return False
-        self.state = self.history.pop()
+        self.state, self.active_cube = self.history.pop()
         self.status = "playing"
         self.moves -= 1
         return True
