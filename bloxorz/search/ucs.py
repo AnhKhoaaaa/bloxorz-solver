@@ -33,11 +33,11 @@ from .cost import move_cost
 # Bốn hướng di chuyển chuẩn; cube=None → khối nguyên vẹn
 _ACTIONS: tuple[Action, ...] = tuple(Action(direction) for direction in ORDERED_DIRECTIONS)
 
-# Giữ thứ tự hướng chuẩn; cùng hướng thì xét cube 0 trước cube 1.
+# Xét đủ các hướng chuẩn của cube 0 trước, rồi đến cube 1.
 _SPLIT_ACTIONS: tuple[Action, ...] = tuple(
     Action(direction, cube=cube)
-    for direction in ORDERED_DIRECTIONS
     for cube in (0, 1)
+    for direction in ORDERED_DIRECTIONS
 )
 
 

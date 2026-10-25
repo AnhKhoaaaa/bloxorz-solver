@@ -14,7 +14,7 @@ from .cost import move_cost
 from .heuristics import Heuristic, make_heuristic
 
 _ACTIONS = tuple(Action(direction) for direction in ORDERED_DIRECTIONS)
-_SPLIT_ACTIONS = tuple(Action(direction, cube) for direction in ORDERED_DIRECTIONS for cube in (0, 1))
+_SPLIT_ACTIONS = tuple(Action(direction, cube) for cube in (0, 1) for direction in ORDERED_DIRECTIONS)
 
 
 def best_first(stage: Stage, ctx: SearchContext, heuristic: Heuristic) -> tuple[Action, ...] | None:
