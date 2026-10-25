@@ -14,10 +14,8 @@ Cài đặt:
     * Sinon → mở rộng, sinh các trạng thái kế tiếp.
 - Kết quả: tuple[Action, ...] hoặc None nếu không có lời giải.
 
-Ghi chú phạm vi:
-- Hiện chỉ xử lý khối NGUYÊN VẸN qua engine.step.
-- Trạng thái tách đôi (pose=None) cần engine VT2 (split.py) hoàn thiện;
-  khi gặp, solver bỏ qua trạng thái đó một cách an toàn.
+Khối nguyên vẹn và hai cube sau khi tách đều được xử lý qua engine.step.
+Khi tách, mỗi cube được xét đủ bốn hướng; engine tự xử lý việc ghép khối.
 """
 
 from __future__ import annotations
@@ -26,18 +24,20 @@ import heapq
 from typing import Optional
 
 from bloxorz.engine import initial_state, is_goal, step
-from bloxorz.model import Action, Direction, State
+from bloxorz.model import Action, State
 from bloxorz.stage import Stage
 
-from .base import SearchContext, register, reconstruct
+from .base import ORDERED_DIRECTIONS, SearchContext, register, reconstruct
 from .cost import move_cost
 
 # Bốn hướng di chuyển chuẩn; cube=None → khối nguyên vẹn
-_ACTIONS: tuple[Action, ...] = (
-    Action(Direction.UP),
-    Action(Direction.DOWN),
-    Action(Direction.LEFT),
-    Action(Direction.RIGHT),
+_ACTIONS: tuple[Action, ...] = tuple(Action(direction) for direction in ORDERED_DIRECTIONS)
+
+# Xét đủ các hướng chuẩn của cube 0 trước, rồi đến cube 1.
+_SPLIT_ACTIONS: tuple[Action, ...] = tuple(
+    Action(direction, cube=cube)
+    for cube in (0, 1)
+    for direction in ORDERED_DIRECTIONS
 )
 
 
@@ -88,12 +88,9 @@ def ucs(stage: Stage, ctx: SearchContext) -> tuple[Action, ...] | None:
         if is_goal(state, stage):
             return reconstruct(parents, state)
 
-        # Bỏ qua trạng thái tách đôi (engine VT2 chưa cài đặt)
-        if state.pose is None:
-            continue
-
         # Sinh các trạng thái kế tiếp
-        for action in _ACTIONS:
+        actions = _SPLIT_ACTIONS if state.pose is None else _ACTIONS
+        for action in actions:
             next_state: State | None = step(state, action, stage)
             if next_state is None:
                 continue  # Bước đi không hợp lệ (rơi vực, gạch vỡ, v.v.)

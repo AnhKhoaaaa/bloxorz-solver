@@ -1,0 +1,40 @@
+{
+  "grid": [
+    "S##B######",
+    "...##F###F",
+    "...#######",
+    "....#F####",
+    "...####F#G"
+  ],
+  "bridges": [
+    {
+      "id": "entry",
+      "cells": [
+        [
+          0,
+          3
+        ]
+      ],
+      "initially_open": false
+    }
+  ],
+  "switches": [
+    {
+      "id": "open_entry",
+      "kind": "soft",
+      "pos": [
+        0,
+        1
+      ],
+      "mode": "permanent",
+      "set_to": "open",
+      "bridges": [
+        "entry"
+      ]
+    }
+  ],
+  "id": "g5_03",
+  "group": "G5",
+  "source": "team",
+  "note": "Màn kết hợp hai lối: mở cầu qua công tắc và lựa chọn đường đi tối ưu cost."
+}

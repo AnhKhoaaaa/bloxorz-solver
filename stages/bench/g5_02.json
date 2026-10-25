@@ -1,0 +1,148 @@
+{
+  "id": "g5_02",
+  "group": "G5",
+  "grid": [
+    ".......###..###",
+    "....#BB###BB###",
+    "##BB#..###..###",
+    "#####...#......",
+    "##.............",
+    ".#.....#.......",
+    ".#.....#.......",
+    "###...###..###.",
+    "#S#######BB#G#.",
+    "###...###..###."
+  ],
+  "bridges": [
+    {
+      "id": "bridgeA",
+      "cells": [
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          3
+        ]
+      ],
+      "initially_open": false
+    },
+    {
+      "id": "bridgeB",
+      "cells": [
+        [
+          1,
+          5
+        ],
+        [
+          1,
+          6
+        ]
+      ],
+      "initially_open": true
+    },
+    {
+      "id": "bridgeC",
+      "cells": [
+        [
+          1,
+          10
+        ],
+        [
+          1,
+          11
+        ]
+      ],
+      "initially_open": false
+    },
+    {
+      "id": "bridgeD",
+      "cells": [
+        [
+          8,
+          9
+        ],
+        [
+          8,
+          10
+        ]
+      ],
+      "initially_open": true
+    }
+  ],
+  "switches": [
+    {
+      "id": "s1",
+      "kind": "heavy",
+      "pos": [
+        1,
+        12
+      ],
+      "mode": "toggle",
+      "bridges": [
+        "bridgeA",
+        "bridgeB"
+      ]
+    },
+    {
+      "id": "s2",
+      "kind": "soft",
+      "pos": [
+        3,
+        8
+      ],
+      "mode": "toggle",
+      "bridges": [
+        "bridgeB",
+        "bridgeC"
+      ]
+    },
+    {
+      "id": "s3",
+      "kind": "split",
+      "pos": [
+        5,
+        7
+      ],
+      "targets": [
+        [
+          1,
+          13
+        ],
+        [
+          8,
+          1
+        ]
+      ]
+    },
+    {
+      "id": "s4",
+      "kind": "soft",
+      "pos": [
+        7,
+        11
+      ],
+      "mode": "permanent",
+      "set_to": "close",
+      "bridges": [
+        "bridgeD"
+      ]
+    },
+    {
+      "id": "s5",
+      "kind": "soft",
+      "pos": [
+        9,
+        11
+      ],
+      "mode": "permanent",
+      "set_to": "close",
+      "bridges": [
+        "bridgeD"
+      ]
+    }
+  ],
+  "source": "original-15",
+  "note": "Màn 15 gốc Bloxorz: tổng hợp đầy đủ cơ chế F, cầu, công tắc nặng/mềm và phân tách."
+}

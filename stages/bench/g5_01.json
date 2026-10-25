@@ -1,0 +1,102 @@
+{
+  "id": "g5_01",
+  "group": "G5",
+  "grid": [
+    "###.....######",
+    "#G#BB#BB#S####",
+    "###.....####B.",
+    ".........###B.",
+    "...........##.",
+    "............#.",
+    "............#.",
+    "...........##.",
+    "....#####..##.",
+    "....##..#####."
+  ],
+  "bridges": [
+    {
+      "id": "bridgeA",
+      "cells": [
+        [
+          1,
+          6
+        ],
+        [
+          1,
+          7
+        ],
+        [
+          2,
+          12
+        ],
+        [
+          3,
+          12
+        ]
+      ],
+      "initially_open": false
+    },
+    {
+      "id": "bridgeB",
+      "cells": [
+        [
+          1,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "initially_open": false
+    }
+  ],
+  "switches": [
+    {
+      "id": "s1",
+      "kind": "split",
+      "pos": [
+        1,
+        12
+      ],
+      "targets": [
+        [
+          1,
+          12
+        ],
+        [
+          1,
+          9
+        ]
+      ]
+    },
+    {
+      "id": "s2",
+      "kind": "soft",
+      "pos": [
+        9,
+        5
+      ],
+      "mode": "permanent",
+      "set_to": "open",
+      "bridges": [
+        "bridgeB"
+      ]
+    },
+    {
+      "id": "s3",
+      "kind": "heavy",
+      "pos": [
+        9,
+        11
+      ],
+      "mode": "permanent",
+      "set_to": "open",
+      "bridges": [
+        "bridgeA"
+      ]
+    }
+  ],
+  "source": "original-10",
+  "note": "Màn 10 gốc Bloxorz: kết hợp gạch dễ vỡ F, cầu và nhiều công tắc."
+}

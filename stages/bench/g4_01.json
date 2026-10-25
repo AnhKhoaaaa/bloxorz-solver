@@ -1,0 +1,31 @@
+{
+  "id": "g4_01",
+  "group": "G4",
+  "grid": [
+    "S###...",
+    ".......",
+    "######G"
+  ],
+  "switches": [
+    {
+      "id": "s1",
+      "kind": "split",
+      "pos": [
+        0,
+        3
+      ],
+      "targets": [
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          2
+        ]
+      ]
+    }
+  ],
+  "source": "team (fixture_split)",
+  "note": "Công tắc phân tách split switch; 2 cube điều khiển độc lập và tự ghép lại."
+}
