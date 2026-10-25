@@ -12,6 +12,7 @@ from .base import (
     run,
 )
 from .cost import move_cost  # noqa: F401 – public API VT5
+from . import bfs  # noqa: F401 – đăng ký @register("bfs")
 from . import ucs  # noqa: F401 – đăng ký @register("ucs")
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "SearchAborted",
     "SearchContext",
     "SearchResult",
+    "bfs",
     "move_cost",
     "reconstruct",
     "register",
