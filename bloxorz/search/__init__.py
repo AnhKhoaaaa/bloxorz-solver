@@ -13,6 +13,7 @@ from .base import (
 )
 from .cost import move_cost  # noqa: F401 – public API VT5
 from . import ucs  # noqa: F401 – đăng ký @register("ucs")
+from . import astar  # noqa: F401 – đăng ký astar và astar_manhattan
 
 __all__ = [
     "ALGORITHMS",
@@ -26,4 +27,5 @@ __all__ = [
     "register",
     "run",
     "ucs",
+    "astar",
 ]
