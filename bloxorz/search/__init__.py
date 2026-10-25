@@ -29,9 +29,5 @@ __all__ = [
     "register",
     "run",
     "ucs",
-<<<<<<< HEAD
     "astar",
 ]
-=======
-]
->>>>>>> origin/main
