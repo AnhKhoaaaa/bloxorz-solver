@@ -40,8 +40,24 @@ class BlockView:
             visible=False,
         )
 
+    def target_from_state(self, state: State) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+        """Trả về (scale, position) cho khối nguyên dựa trên state."""
+        r, c = state.pos
+        if state.pose == Pose.STANDING:
+            return (0.92, 1.92, 0.92), (float(c), 1.05, -float(r))
+        elif state.pose == Pose.HORIZONTAL:
+            return (1.92, 0.92, 0.92), (float(c) + 0.5, 0.55, -float(r))
+        elif state.pose == Pose.VERTICAL:
+            return (0.92, 0.92, 1.92), (float(c), 0.55, -float(r) - 0.5)
+        return (0.92, 0.92, 0.92), (float(c), 0.55, -float(r))
+
     def update_from_state(self, state: State) -> None:
         """Cập nhật kích thước và tọa độ 3D của khối dựa trên State."""
+        # Khôi phục góc xoay chuẩn (phòng trường hợp vừa xoay rơi vực)
+        self.block.rotation = (0, 0, 0)
+        self.cube1.rotation = (0, 0, 0)
+        self.cube2.rotation = (0, 0, 0)
+
         if state.pose is None:
             # Khối đang bị tách làm 2 cube 1x1x1
             self.block.visible = False
@@ -63,22 +79,13 @@ class BlockView:
         self.cube2.visible = False
         self.block.visible = True
 
-        r, c = state.pos
-        if state.pose == Pose.STANDING:
-            # Đứng thẳng trên ô (r, c) -> cao 2, đáy 1x1
-            self.block.scale = (0.92, 1.92, 0.92)
-            self.block.position = (float(c), 1.05, -float(r))
-        elif state.pose == Pose.HORIZONTAL:
-            # Nằm ngang chiếm 2 ô (r, c) và (r, c+1) -> dài 2 theo trục X
-            self.block.scale = (1.92, 0.92, 0.92)
-            self.block.position = (float(c) + 0.5, 0.55, -float(r))
-        elif state.pose == Pose.VERTICAL:
-            # Nằm dọc chiếm 2 ô (r, c) và (r+1, c) -> dài 2 theo trục Z
-            self.block.scale = (0.92, 0.92, 1.92)
-            self.block.position = (float(c), 0.55, -float(r) - 0.5)
+        scale, pos = self.target_from_state(state)
+        self.block.scale = scale
+        self.block.position = pos
 
     def hide(self) -> None:
         """Ẩn toàn bộ khối."""
         self.block.visible = False
         self.cube1.visible = False
         self.cube2.visible = False
+
