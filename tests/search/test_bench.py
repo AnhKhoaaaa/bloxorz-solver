@@ -104,3 +104,72 @@ def test_bench_main_cli_execution(tmp_path):
         for r in rows:
             assert r["status"] == "solved"
             assert r["verified"] == "True"
+
+
+def test_bench_invalid_repeat():
+    """Kiểm tra parser từ chối repeat < 1 hoặc sai kiểu dữ liệu."""
+    parser = build_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--repeat", "0"])
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--repeat", "-3"])
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--repeat", "invalid"])
+
+
+def test_bench_invalid_timeout():
+    """Kiểm tra parser từ chối timeout âm, vô cùng hoặc NaN."""
+    parser = build_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--timeout", "-0.1"])
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--timeout", "inf"])
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--timeout", "nan"])
+
+
+def test_bench_invalid_algo(tmp_path):
+    """Kiểm tra CLI từ chối thuật toán không hợp lệ (typo) trước khi chạy và trả mã khác 0."""
+    out_csv = tmp_path / "typo_run.csv"
+    ret = main([
+        "--stages", "stages/fixtures/basic.json",
+        "--algos", "bfs", "typo_algo",
+        "--out", str(out_csv),
+    ])
+    assert ret == 2
+    assert not out_csv.exists()
+
+
+def test_bench_timeout_no_fake_padding(tmp_path):
+    """Kiểm tra khi timeout, runner dừng sớm và chỉ ghi đúng số lần chạy thực tế (không đệm giả)."""
+    from bloxorz.stage import Stage
+
+    # Tạo stage lớn với timeout_s = 0.0 để kích hoạt timeout ngay lần đầu
+    large_grid = tuple("#" * 40 for _ in range(40))
+    stage = Stage(
+        id="timeout_stage",
+        group="test",
+        grid=large_grid,
+        start=(20, 20),
+        goal=(0, 0),
+    )
+
+    out_csv = tmp_path / "timeout_run.csv"
+    results = run_benchmark(
+        stages=[stage],
+        algos=["bfs"],
+        repeat=5,
+        timeout=0.0,
+        out_path=out_csv,
+    )
+
+    assert len(results) == 1
+    row = results[0]
+    assert row["status"] == "timeout"
+    # Chỉ ghi nhận đúng 1 lần chạy thực tế, không nhân bản thành 5 lần
+    times = row["time_ms_all"].split(";")
+    assert len(times) == 1

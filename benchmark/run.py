@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
 from pathlib import Path
 import platform
 import statistics
@@ -25,8 +26,33 @@ from typing import Any, Sequence
 
 from bloxorz.loader import load_stage, load_stages
 from bloxorz.search import Limits, run
+from bloxorz.search.base import ALGORITHMS
 from bloxorz.stage import Stage
 from bloxorz.verify import verify_solution
+
+
+def parse_repeat(value: str) -> int:
+    """Kiểm tra và chuyển đổi số lần lặp: yêu cầu số nguyên >= 1."""
+    try:
+        val = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"repeat phải là số nguyên, nhận được: {value!r}")
+    if val < 1:
+        raise argparse.ArgumentTypeError(f"repeat phải >= 1, nhận được: {val}")
+    return val
+
+
+def parse_timeout(value: str) -> float:
+    """Kiểm tra và chuyển đổi timeout: yêu cầu số thực hữu hạn và không âm (>= 0)."""
+    try:
+        val = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"timeout phải là số thực, nhận được: {value!r}")
+    if not math.isfinite(val) or val < 0.0:
+        raise argparse.ArgumentTypeError(
+            f"timeout phải là số thực hữu hạn và không âm (>= 0), nhận được: {value!r}"
+        )
+    return val
 
 CSV_COLUMNS: list[str] = [
     "stage_id",
@@ -108,10 +134,8 @@ def benchmark_stage_algo(
         times_ms.append(time_ms)
 
         # Các thuật toán của dự án là đơn định (deterministic).
-        # Nếu đã timeout/cancelled/error ở lần đầu, không cần lặp lại để tránh lãng phí thời gian.
+        # Nếu đã timeout/cancelled/error ở lần đầu, dừng sớm và ghi nhận đúng số mẫu thực tế đã chạy.
         if res.status in ("timeout", "cancelled", "error"):
-            while len(times_ms) < repeat:
-                times_ms.append(time_ms)
             break
 
     assert last_res is not None
@@ -223,15 +247,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--repeat",
-        type=int,
+        type=parse_repeat,
         default=5,
-        help="Số lần lặp đo thời gian để lấy trung vị (mặc định: 5).",
+        help="Số lần lặp đo thời gian để lấy trung vị (mặc định: 5, yêu cầu >= 1).",
     )
     parser.add_argument(
         "--timeout",
-        type=float,
+        type=parse_timeout,
         default=60.0,
-        help="Thời gian tối đa (giây) cho mỗi lần chạy thuật toán (mặc định: 60).",
+        help="Thời gian tối đa (giây) cho mỗi lần chạy thuật toán (mặc định: 60, yêu cầu hữu hạn và không âm).",
     )
     parser.add_argument(
         "--out",
@@ -247,6 +271,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    # 1. Từ chối thuật toán không hợp lệ trước khi chạy
+    unknown_algos = [a for a in args.algos if a not in ALGORITHMS]
+    if unknown_algos:
+        print(
+            f"Lỗi: Thuật toán không hợp lệ: {', '.join(unknown_algos)}. "
+            f"Các thuật toán hỗ trợ: {', '.join(sorted(ALGORITHMS.keys()))}",
+            file=sys.stderr,
+        )
+        return 2
+
+    # 2. Đọc màn chơi
     try:
         stages = load_all_stages(args.stages)
     except Exception as e:
@@ -262,13 +297,27 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     print(f"File kết quả: {args.out}")
 
-    run_benchmark(
+    results = run_benchmark(
         stages=stages,
         algos=args.algos,
         repeat=args.repeat,
         timeout=args.timeout,
         out_path=args.out,
     )
+
+    # 3. Trả mã khác 0 nếu có lỗi (status=error) hoặc lời giải solved không qua verification
+    has_error = any(row["status"] == "error" for row in results)
+    has_failed_verify = any(
+        row["status"] == "solved" and row["verified"] is False
+        for row in results
+    )
+
+    if has_error or has_failed_verify:
+        if has_error:
+            print("Lỗi: Có thuật toán bị lỗi (status=error) trong quá trình benchmark.", file=sys.stderr)
+        if has_failed_verify:
+            print("Lỗi: Có lời giải (status=solved) không vượt qua verify_solution (verified=False).", file=sys.stderr)
+        return 1
 
     print("Benchmark hoàn tất thành công!")
     return 0
