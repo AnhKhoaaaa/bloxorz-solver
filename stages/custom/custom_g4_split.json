@@ -1,0 +1,61 @@
+{
+  "id": "custom_g4_split",
+  "group": "G4",
+  "grid": [
+    "S###......",
+    "..........",
+    "###BB#####",
+    "###...###G"
+  ],
+  "bridges": [
+    {
+      "id": "b1",
+      "cells": [
+        [
+          2,
+          3
+        ],
+        [
+          2,
+          4
+        ]
+      ],
+      "initially_open": false
+    }
+  ],
+  "switches": [
+    {
+      "id": "s_split",
+      "kind": "split",
+      "pos": [
+        0,
+        3
+      ],
+      "targets": [
+        [
+          2,
+          0
+        ],
+        [
+          3,
+          7
+        ]
+      ]
+    },
+    {
+      "id": "s_bridge",
+      "kind": "soft",
+      "pos": [
+        3,
+        0
+      ],
+      "mode": "permanent",
+      "set_to": "open",
+      "bridges": [
+        "b1"
+      ]
+    }
+  ],
+  "source": "VT2 (Hợp)",
+  "note": "Màn đóng góp của VT2: Phối hợp 2 cube sau khi split, mở cầu cho nhau rồi ghép lại về Goal."
+}
