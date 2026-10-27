@@ -61,7 +61,14 @@ class SceneView:
         elif old.pose is None and new.pose is None:
             # Đang ở trạng thái tách khối
             moving_cube = self.block.cube1 if (action.cube == 0) else self.block.cube2
-            r, c = (new.pos if action.cube == 0 else new.cube2) or new.pos
+            # State luôn chuẩn hóa pos < cube2 nên viên vừa đi có thể bị đổi chỗ sang cube2:
+            # đích là ô trong {new.pos, new.cube2} khác với viên đứng yên
+            still = old.cube2 if action.cube == 0 else old.pos
+            moved_to_cube2 = new.pos == still
+            if moved_to_cube2 != (action.cube == 1):
+                # Đổi entity theo để cube1 luôn là viên ở state.pos (màu đi theo đúng viên)
+                self.block.cube1, self.block.cube2 = self.block.cube2, self.block.cube1
+            r, c = new.cube2 if moved_to_cube2 else new.pos
             target_pos = (float(c), 0.55, -float(r))
             animate_roll(moving_cube, target_pos, on_complete=finish_move)
         else:
