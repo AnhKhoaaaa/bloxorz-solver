@@ -1,0 +1,42 @@
+{
+  "id": "custom_g5_combo",
+  "group": "G5",
+  "grid": [
+    "S###BB###G",
+    "##F#..#F##",
+    "####..####"
+  ],
+  "bridges": [
+    {
+      "id": "b1",
+      "cells": [
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          5
+        ]
+      ],
+      "initially_open": false
+    }
+  ],
+  "switches": [
+    {
+      "id": "s1",
+      "kind": "heavy",
+      "pos": [
+        2,
+        3
+      ],
+      "mode": "permanent",
+      "set_to": "open",
+      "bridges": [
+        "b1"
+      ]
+    }
+  ],
+  "source": "VT2 (Hợp)",
+  "note": "Màn đóng góp của VT2: Combo gạch dễ vỡ F, công tắc nặng heavy và cầu B."
+}
