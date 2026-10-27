@@ -38,6 +38,7 @@ class GameController:
     """
     Ván chơi tay trên danh sách màn:
     - move(direction): lăn khối 1 bước, trả "moved" | "won" | "fell" | "ignored".
+    - play(action): như move() nhưng nhận Action của solver (chọn đúng cube khi tách).
     - restart(), undo(), next_stage(), prev_stage(), load(index).
     - Sau khi thắng/rơi, mọi nước đi bị bỏ qua cho tới khi restart/undo/chuyển màn.
     - Khi khối đã tách (state.pose is None): nước đi điều khiển cube active_cube (0 hoặc 1),
@@ -102,6 +103,12 @@ class GameController:
             self.status = "won"
             return "won"
         return "moved"
+
+    def play(self, action: Action) -> Outcome:
+        """Đi đúng 1 Action có sẵn (vd. 1 bước trong lời giải của solver), kể cả chỉ số cube khi tách."""
+        if self.is_split and action.cube is not None:
+            self.active_cube = action.cube
+        return self.move(action.direction)
 
     def undo(self) -> bool:
         """Quay lại 1 bước (kể cả ngay sau khi rơi). Trả False nếu không còn gì để undo."""

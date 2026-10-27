@@ -1,8 +1,9 @@
-# Phụ trách: VT4 - Task 4.2
+# Phụ trách: VT4 - Task 4.2 / 4.3
 """
 Cửa sổ chính và vòng lặp tương tác ứng dụng.
 
 run(controller) mở cửa sổ Ursina, nhận phím và chuyển cho GameController qua apply_key().
+Panel solver (task 4.3, solver_runner.SolverSession) nhận các phím Tab/G/Enter/C trước.
 Cảnh vẽ: dùng SceneView 3D của VT3 (bloxorz/gui/scene/view.py, task 3.1) khi đã có;
 trước đó tạm vẽ màn bằng ký tự (TextBoardScene) để vẫn chơi tay được.
 """
@@ -72,32 +73,48 @@ def make_scene(fallback: Callable[[], Scene] = TextBoardScene) -> Scene:
 
 def run(controller: GameController) -> None:
     try:
-        from ursina import Entity, Ursina, application, color, window
+        from ursina import Entity, Ursina, application, color, time, window
     except ImportError:
         raise SystemExit("Chưa cài Ursina: chạy `pip install -r requirements.txt`, hoặc chơi trong terminal bằng `python main.py --text`")
-    from bloxorz.gui.ui import Hud
+    from bloxorz.gui.solver_runner import SolverSession
+    from bloxorz.gui.ui import Hud, SolverPanel
 
     app = Ursina(title="Bloxorz Solver", development_mode=False, fullscreen=False, borderless=False)
     window.color = color.rgb32(24, 26, 32)
 
     scene = make_scene()
     hud = Hud()
+    panel = SolverPanel()
+    session = SolverSession(controller, scene)
     scene.load_stage(controller.stage, controller.state)
-    hud.update(controller)
 
+    def refresh() -> None:
+        hud.update(controller)
+        panel.update(session)
+
+    refresh()
     keys = KeyBuffer(controller, scene)
 
     class KeyInput(Entity):
         def input(self, key: str) -> None:
             if key == "escape":
+                session.runner.cancel()
                 application.quit()
+            elif session.handle_key(key):
+                # Phím của panel (hoặc phím chơi tay bị chặn khi replay): bỏ phím chơi tay đang chờ
+                keys.pending = None
+                refresh()
             elif keys.press(key) is not None:
-                hud.update(controller)
+                refresh()
 
         def update(self) -> None:
+            changed = session.update(time.dt)
             # Chạy phím đã giữ lại trong lúc scene diễn hoạt
-            if keys.flush() is not None:
-                hud.update(controller)
+            if not session.replaying and keys.flush() is not None:
+                changed = True
+            # Khi đang giải, vẽ lại mỗi frame để đồng hồ chạy
+            if changed or session.solving:
+                refresh()
 
     KeyInput()
     app.run()
