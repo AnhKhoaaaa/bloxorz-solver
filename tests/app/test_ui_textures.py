@@ -2,13 +2,16 @@
 Kiểm thử chất liệu giao diện - Task 4.5
 - ui_textures vẽ đúng kích thước, có kênh trong suốt, góc bo trong suốt, tất định theo seed.
 - Font và giấy phép OFL đi kèm có trong assets/fonts/.
+Cần Pillow (cài kèm Ursina); CI chỉ cài pytest nên các test này tự bỏ qua ở đó.
 """
 
 from pathlib import Path
 
 import pytest
 
-from bloxorz.gui import ui_textures as tex
+pytest.importorskip("PIL", reason="Pillow đi kèm Ursina, CI chỉ cài pytest")
+
+from bloxorz.gui import ui_textures as tex  # noqa: E402
 
 FONTS = Path(__file__).resolve().parents[2] / "bloxorz" / "gui" / "assets" / "fonts"
 
