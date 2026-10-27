@@ -145,17 +145,33 @@ class KeyBuffer:
         return apply_key(self.controller, self.scene, key)
 
 
-def hud_text(controller: GameController) -> str:
-    """Dòng trạng thái: tên màn, số bước, cube đang chọn khi tách, thông báo thắng/rơi."""
+def hud_text(controller: GameController, show_result: bool = True) -> str:
+    """
+    Dòng trạng thái: tên màn, số bước, cube đang chọn khi tách, thông báo thắng/rơi.
+    show_result=False bỏ thông báo thắng/rơi (cửa sổ Ursina hiện bằng banner_text()).
+    """
     stage = controller.stage
     text = f"Màn {controller.index + 1}/{len(controller.stages)}: {stage.id} ({stage.group})   Bước: {controller.moves}"
     if controller.is_split:
         text += f"   Đang điều khiển khối {controller.active_cube + 1}/2 (Space để đổi)"
+    if not show_result:
+        return text
     if controller.status == "won":
         text += "   HOÀN THÀNH! Nhấn N để sang màn sau"
     elif controller.status == "fell":
         text += "   RƠI! Nhấn R để chơi lại hoặc U để lùi 1 bước"
     return text
+
+
+def banner_text(controller: GameController) -> tuple[str, str] | None:
+    """(tiêu đề, dòng phụ) của banner giữa màn hình khi thắng/rơi; None khi đang chơi."""
+    if controller.status == "won":
+        last = controller.index + 1 >= len(controller.stages)
+        hint = "Nhấn R để chơi lại" if last else "Nhấn N để sang màn sau"
+        return "HOÀN THÀNH!", f"{controller.moves} bước. {hint}"
+    if controller.status == "fell":
+        return "RƠI XUỐNG VỰC!", "Nhấn U để lùi 1 bước hoặc R để chơi lại"
+    return None
 
 
 def run_text(

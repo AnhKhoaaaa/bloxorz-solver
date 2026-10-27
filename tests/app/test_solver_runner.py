@@ -244,3 +244,29 @@ def test_session_reports_failed_status(session):
     assert "BFS: quá thời gian, mở 9 nút" in session.text()
     session.handle_key("enter")
     assert not session.replaying
+
+
+def test_session_select_and_text_options(session):
+    assert session.select("astar") and session.algorithm == "astar"
+    assert not session.select("không có")
+    assert session.text(show_header=False, show_help=False) == ""
+    assert session.text().startswith("Solver: A*") and "Tab:" in session.text()
+
+
+def test_session_replay_progress(session):
+    assert session.replay_progress is None
+    session.handle_key("g")
+    finish_solve(session)
+    session.handle_key("enter")
+    assert session.replay_progress == 0
+    session.update(1.0)
+    assert session.replay_progress == pytest.approx(1 / 7)
+
+
+def test_session_select_blocked_while_solving(session):
+    started = threading.Event()
+    session.runner = SolverRunner(run_fn=blocking_run(started))
+    session.handle_key("g")
+    started.wait(5)
+    assert not session.select("astar") and session.algorithm == "bfs"
+    session.handle_key("c")

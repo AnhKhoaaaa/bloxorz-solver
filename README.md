@@ -36,11 +36,48 @@ cd bloxorz-solver
   ```
 
 ### 3. Kiểm tra môi trường với Pytest
-Chạy lệnh kiểm tra test đầu tiên (smoke test):
 ```bash
 pytest -q
 ```
-Kết quả mong đợi: `1 passed in ...s`.
+Kết quả mong đợi: toàn bộ test `passed`, không có `failed`.
+
+---
+
+## 🎮 Chạy Chương Trình
+
+```bash
+python main.py                                   # cửa sổ 3D, bắt đầu từ màn gốc đầu tiên (stages/original)
+python main.py --stage stage_05                  # bắt đầu từ màn có id stage_05
+python main.py --stage stages/fixtures/split.json   # chơi đúng 1 file màn
+python main.py --stages-dir stages/bench         # chơi bộ màn thực nghiệm G1–G5
+python main.py --text                            # chơi trong terminal, không cần Ursina
+```
+
+### Điều khiển
+| Phím | Nút trên màn hình | Tác dụng |
+| :--- | :--- | :--- |
+| Mũi tên / `W` `A` `S` `D` | | Lăn khối |
+| `Space` | | Đổi khối đang điều khiển khi khối đã tách |
+| `R` | **Chơi lại** | Chơi lại màn từ đầu |
+| `U` / `Backspace` | **Lùi 1 bước** | Lùi 1 bước (kể cả ngay sau khi rơi) |
+| `N` / `P` | **Màn sau** / **Màn trước** | Đổi màn |
+| `Esc` | | Thoát |
+
+### Giải tự động (bảng SOLVER bên phải)
+| Phím | Nút | Tác dụng |
+| :--- | :--- | :--- |
+| `Tab` | Bấm tên thuật toán | Chọn thuật toán (danh sách lấy từ các solver đã đăng ký trong `bloxorz/search`) |
+| `G` | **GIẢI (G)** | Giải màn hiện tại từ vị trí xuất phát, chạy nền nên cửa sổ không bị treo (giới hạn 60 giây) |
+| `Enter` | **REPLAY (Enter)** | Phát lại lời giải từng bước có hoạt ảnh; nhấn lần nữa để tạm dừng / chạy tiếp |
+| `C` | **HỦY (C)** | Hủy lần giải đang chạy hoặc dừng replay |
+
+Sau khi giải, bảng hiện trạng thái (có lời giải / không có lời giải / quá thời gian / đã hủy), số bước, chi phí,
+số nút đã mở rộng và thời gian chạy. Trong lúc replay, phím chơi tay bị khóa để không lệch với lời giải.
+
+### Lưu ý trên macOS
+Trên một số máy Mac (ví dụ Apple Silicon), OpenGL chỉ hỗ trợ GLSL 1.20 trong khi shader mặc định của Ursina 8
+dùng GLSL 1.30/1.40, nên cảnh 3D có thể hiện màu đen (terminal báo `version '130' is not supported`).
+Chữ và nút 2D vẫn hiện bình thường. Khi gặp lỗi này có thể chơi bằng `python main.py --text`.
 
 ---
 

@@ -210,6 +210,22 @@ class SolverSession:
     def replaying(self) -> bool:
         return self.replayer is not None
 
+    @property
+    def replay_progress(self) -> float | None:
+        """Tỉ lệ 0..1 số bước đã phát (cho thanh tiến độ), None khi không replay."""
+        if self.replayer is None:
+            return None
+        total = len(self.replayer.actions)
+        return self.replayer.index / total if total else 1.0
+
+    def select(self, algorithm: str) -> bool:
+        """Chọn thuật toán theo tên (nút bấm trên panel). Trả False nếu đang giải hoặc tên lạ."""
+        if self.solving or algorithm not in self.algorithms:
+            return False
+        self.selected = self.algorithms.index(algorithm)
+        self.message = ""
+        return True
+
     def handle_key(self, key: str) -> bool:
         """Trả True nếu panel đã dùng phím (app không chuyển phím đó cho KeyBuffer nữa)."""
         command = SOLVER_KEYS.get(key)
@@ -281,10 +297,15 @@ class SolverSession:
                 changed = True
         return changed
 
-    def text(self) -> str:
-        """Nội dung panel: thuật toán đang chọn, trạng thái giải/replay, thống kê lời giải."""
-        name = display_name(self.algorithm) if self.algorithm else "-"
-        lines = [f"Solver: {name}   ({len(self.algorithms)} thuật toán)"]
+    def text(self, show_header: bool = True, show_help: bool = True) -> str:
+        """
+        Nội dung panel: thuật toán đang chọn, trạng thái giải/replay, thống kê lời giải.
+        Panel có nút bấm (ui.py) tự vẽ tên thuật toán và phím tắt nên tắt show_header/show_help.
+        """
+        lines = []
+        if show_header:
+            name = display_name(self.algorithm) if self.algorithm else "-"
+            lines.append(f"Solver: {name}   ({len(self.algorithms)} thuật toán)")
         if self.solving:
             lines.append(f"Đang giải bằng {display_name(self.runner.algorithm or '')}... {self.runner.elapsed():.1f}s")
         elif self.result is not None:
@@ -301,5 +322,6 @@ class SolverSession:
             lines.append(f"Replay {self.replayer.index}/{len(self.replayer.actions)} ({state})")
         if self.message:
             lines.append(self.message)
-        lines.append(SOLVER_HELP)
+        if show_help:
+            lines.append(SOLVER_HELP)
         return "\n".join(lines)

@@ -77,35 +77,40 @@ def run(controller: GameController) -> None:
     except ImportError:
         raise SystemExit("Chưa cài Ursina: chạy `pip install -r requirements.txt`, hoặc chơi trong terminal bằng `python main.py --text`")
     from bloxorz.gui.solver_runner import SolverSession
-    from bloxorz.gui.ui import Hud, SolverPanel
+    from bloxorz.gui.ui import Banner, Hud, SolverPanel
 
     app = Ursina(title="Bloxorz Solver", development_mode=False, fullscreen=False, borderless=False)
     window.color = color.rgb32(24, 26, 32)
 
     scene = make_scene()
-    hud = Hud()
-    panel = SolverPanel()
     session = SolverSession(controller, scene)
-    scene.load_stage(controller.stage, controller.state)
+    keys = KeyBuffer(controller, scene)
 
     def refresh() -> None:
         hud.update(controller)
         panel.update(session)
 
+    def press(key: str) -> None:
+        """Bàn phím và nút bấm trên màn hình đều đi qua đây."""
+        if key == "escape":
+            session.runner.cancel()
+            application.quit()
+        elif session.handle_key(key):
+            # Phím của panel (hoặc phím chơi tay bị chặn khi replay): bỏ phím chơi tay đang chờ
+            keys.pending = None
+            refresh()
+        elif keys.press(key) is not None:
+            refresh()
+
+    hud = Hud(press)
+    panel = SolverPanel(session, press, refresh)
+    banner = Banner()
+    scene.load_stage(controller.stage, controller.state)
     refresh()
-    keys = KeyBuffer(controller, scene)
 
     class KeyInput(Entity):
         def input(self, key: str) -> None:
-            if key == "escape":
-                session.runner.cancel()
-                application.quit()
-            elif session.handle_key(key):
-                # Phím của panel (hoặc phím chơi tay bị chặn khi replay): bỏ phím chơi tay đang chờ
-                keys.pending = None
-                refresh()
-            elif keys.press(key) is not None:
-                refresh()
+            press(key)
 
         def update(self) -> None:
             changed = session.update(time.dt)
@@ -115,6 +120,7 @@ def run(controller: GameController) -> None:
             # Khi đang giải, vẽ lại mỗi frame để đồng hồ chạy
             if changed or session.solving:
                 refresh()
+            banner.update(controller, scene.is_animating())
 
     KeyInput()
     app.run()

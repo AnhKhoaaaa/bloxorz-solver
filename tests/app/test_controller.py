@@ -16,7 +16,7 @@ import pytest
 
 from bloxorz.gui.controller import GameController
 from bloxorz.gui.app import SCENE_MODULE, make_scene
-from bloxorz.gui.fake_scene import FakeScene, KeyBuffer, apply_key, hud_text, run_text
+from bloxorz.gui.fake_scene import FakeScene, KeyBuffer, apply_key, banner_text, hud_text, run_text
 from bloxorz.loader import load_stage, load_stages, parse_stage
 from bloxorz.model import Direction, Pose, State
 from main import select_stages
@@ -168,6 +168,22 @@ def test_hud_text(game):
     for _ in range(4):
         game.move(R)
     assert "HOÀN THÀNH" in hud_text(game)
+    assert "HOÀN THÀNH" not in hud_text(game, show_result=False)
+
+
+def test_banner_text(game):
+    assert banner_text(game) is None
+    game.move(U)
+    assert banner_text(game)[0] == "RƠI XUỐNG VỰC!"
+    game.restart()
+    for _ in range(4):
+        game.move(R)
+    title, sub = banner_text(game)
+    assert title == "HOÀN THÀNH!" and sub.startswith("4 bước") and "R để chơi lại" in sub  # màn cuối
+    two = GameController([game.stage, game.stage])
+    for _ in range(4):
+        two.move(R)
+    assert "N để sang màn sau" in banner_text(two)[1]
 
 
 def test_run_text_plays_until_quit(game):
