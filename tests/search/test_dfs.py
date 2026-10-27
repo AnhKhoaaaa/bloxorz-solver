@@ -178,8 +178,9 @@ def test_dfs_cancel_when_popping_goal():
 
     class CancelAtGoalContext(SearchContext):
         def tick(self) -> None:
-            # Sau khi mở rộng nút trước đó, bật cờ hủy
-            if self.expanded >= 1:
+            # Bật cờ hủy sau khi mở rộng xong nút trung gian (expanded=2),
+            # ngay trước khi nút đích được pop và tick
+            if self.expanded >= 2:
                 cancel_event.set()
             super().tick()
 
