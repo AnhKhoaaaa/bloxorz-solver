@@ -13,6 +13,7 @@ from .base import (
 )
 from .cost import move_cost  # noqa: F401 – public API VT5
 from . import bfs  # noqa: F401 – đăng ký @register("bfs")
+from . import dfs  # noqa: F401 – đăng ký @register("dfs")
 from . import ucs  # noqa: F401 – đăng ký @register("ucs")
 from . import astar  # noqa: F401 – đăng ký astar và astar_manhattan
 
@@ -24,6 +25,7 @@ __all__ = [
     "SearchContext",
     "SearchResult",
     "bfs",
+    "dfs",
     "move_cost",
     "reconstruct",
     "register",
