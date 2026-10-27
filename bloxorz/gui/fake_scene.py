@@ -94,6 +94,19 @@ def apply_key(controller: GameController, scene: Scene, key: str) -> str | None:
     """Chuyển 1 phím vào controller rồi báo cho scene. Dùng chung cho app.py và run_text()."""
     old = controller.state
     result = controller.handle_key(key)
+    _notify(controller, scene, old, result)
+    return result
+
+
+def apply_action(controller: GameController, scene: Scene, action: Action) -> str:
+    """Đi 1 Action có sẵn (bước replay lời giải của solver) rồi báo cho scene như apply_key()."""
+    old = controller.state
+    result = controller.play(action)
+    _notify(controller, scene, old, result)
+    return result
+
+
+def _notify(controller: GameController, scene: Scene, old: State, result: str | None) -> None:
     action = controller.last_action
     if result == "moved":
         scene.on_move(old, action, controller.state)
@@ -104,7 +117,6 @@ def apply_key(controller: GameController, scene: Scene, key: str) -> str | None:
         scene.on_fall(old, action)
     elif result in ("restart", "undo", "next", "prev"):
         scene.load_stage(controller.stage, controller.state)
-    return result
 
 
 class KeyBuffer:
