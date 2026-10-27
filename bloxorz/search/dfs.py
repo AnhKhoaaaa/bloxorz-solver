@@ -57,10 +57,10 @@ def dfs(stage: Stage, ctx: SearchContext) -> tuple[Action, ...] | None:
             continue
         parents[s] = None if parent is None else (parent, action)
 
+        ctx.tick()
+
         if is_goal(s, stage):
             return reconstruct(parents, s)
-
-        ctx.tick()
 
         # Đảo ngược thứ tự successor để nhánh UP được pop ra duyệt đầu tiên
         for act in reversed(get_available_actions(s)):

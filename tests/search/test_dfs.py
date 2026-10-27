@@ -7,7 +7,7 @@ from bloxorz.stage import Stage
 from bloxorz.loader import load_stage
 from bloxorz.search import run
 from bloxorz.search.dfs import dfs
-from bloxorz.search.base import Limits
+from bloxorz.search.base import Limits, SearchContext
 from bloxorz.verify import verify_solution
 
 
@@ -163,7 +163,33 @@ def test_dfs_cancelled():
     assert res.actions == ()
 
 
-# 11. Test quá thời gian giới hạn (Timeout)
+def test_dfs_cancel_when_popping_goal():
+    """Kiểm tra cờ hủy được bật ngay trước khi pop nút đích thì vẫn bị hủy đúng quy định."""
+    from bloxorz.search.base import SearchAborted
+
+    stage = Stage(
+        id="tiny_cancel_goal",
+        group="test",
+        grid=("S##G",),
+        start=(0, 0),
+        goal=(0, 3),
+    )
+    cancel_event = threading.Event()
+
+    class CancelAtGoalContext(SearchContext):
+        def tick(self) -> None:
+            # Sau khi mở rộng nút trước đó, bật cờ hủy
+            if self.expanded >= 1:
+                cancel_event.set()
+            super().tick()
+
+    ctx = CancelAtGoalContext(limits=Limits(cancel=cancel_event))
+    with pytest.raises(SearchAborted) as excinfo:
+        dfs(stage, ctx)
+    assert excinfo.value.status == "cancelled"
+
+
+# 12. Test quá thời gian giới hạn (Timeout)
 def test_dfs_timeout():
     # Mê cung lớn 40x40 để chắc chắn duyệt vượt quá ngưỡng tick check
     large_grid = tuple("#" * 40 for _ in range(40))
