@@ -237,12 +237,14 @@ def test_goal_detection(basic_stage):
     assert is_goal(State(Pose.VERTICAL, (2, 3)), basic_stage) is False
 
 
-def test_goal_tile_lying_is_invalid(basic_stage):
-    """Ô đích 'G' là một lỗ vuông (goal hole), khối nằm đè qua lỗ sẽ bị rơi xuống lỗ."""
-    # Nằm ngang qua (3, 2) và (3, 3) là ô Goal -> Rơi xuống lỗ
-    assert is_valid_state(State(Pose.HORIZONTAL, (3, 2)), basic_stage) is False
-    # Nằm dọc qua (2, 3) và (3, 3) là ô Goal -> Rơi xuống lỗ
-    assert is_valid_state(State(Pose.VERTICAL, (2, 3)), basic_stage) is False
+def test_goal_tile_lying_is_valid_but_not_goal(basic_stage):
+    """Ô đích 'G' là lỗ 1x1, khối 1x1x2 nằm đè qua lỗ và sàn bên cạnh vẫn an toàn (nhưng chưa thắng)."""
+    # Nằm ngang qua (3, 2) [#] và (3, 3) [G] -> An toàn, chưa thắng
+    assert is_valid_state(State(Pose.HORIZONTAL, (3, 2)), basic_stage) is True
+    assert is_goal(State(Pose.HORIZONTAL, (3, 2)), basic_stage) is False
+    # Nằm dọc qua (2, 3) [#] và (3, 3) [G] -> An toàn, chưa thắng
+    assert is_valid_state(State(Pose.VERTICAL, (2, 3)), basic_stage) is True
+    assert is_goal(State(Pose.VERTICAL, (2, 3)), basic_stage) is False
 
 
 # 7. Test step: Thực hiện nước đi và trả về State mới
@@ -270,6 +272,13 @@ def test_step_illegal_move_returns_none(basic_stage):
     assert step(start_state, Action(Direction.UP), basic_stage) is None
     # Lăn sang trái (ra ngoài biên trái) -> Rơi
     assert step(start_state, Action(Direction.LEFT), basic_stage) is None
+
+
+def test_step_intact_block_with_cube_index_returns_none(basic_stage):
+    """Khi khối nguyên vẹn (pose != None), truyền action.cube != None là không hợp lệ -> trả về None."""
+    start_state = State(Pose.STANDING, (0, 0))
+    assert step(start_state, Action(Direction.RIGHT, cube=0), basic_stage) is None
+    assert step(start_state, Action(Direction.RIGHT, cube=1), basic_stage) is None
 
 
 def test_fragile_tile_with_standard_symbol_f():

@@ -51,6 +51,8 @@ def apply_bridge_action(bridges_open: frozenset[str], bridge_id: str, action: Br
         current.add(bridge_id)
     elif action == "close":
         current.discard(bridge_id)
+    else:
+        raise ValueError(f"Hành động cầu không hợp lệ: {action}")
     return frozenset(current)
 
 
@@ -59,7 +61,7 @@ def apply_switch(switch: Switch, bridges_open: frozenset[str]) -> frozenset[str]
     Áp dụng toàn bộ actions của một công tắc lên tập hợp cầu đang mở bridges_open.
     Trả về tập hợp bridges_open mới.
     """
-    if not switch.actions:
+    if switch.kind == "split" or not switch.actions:
         return bridges_open
 
     current = set(bridges_open)
@@ -73,6 +75,8 @@ def apply_switch(switch: Switch, bridges_open: frozenset[str]) -> frozenset[str]
             current.add(bridge_id)
         elif action == "close":
             current.discard(bridge_id)
+        else:
+            raise ValueError(f"Hành động cầu không hợp lệ: {action}")
 
     return frozenset(current)
 
@@ -98,10 +102,10 @@ def trigger_switches(
     switch_mapping = stage.switch_at
     updated_bridges = bridges_open
 
-    # Duyệt qua các ô của khối để tìm và kích hoạt công tắc
-    for p in cells:
+    # Duyệt qua các ô của khối theo thứ tự tọa độ tăng dần để đảm bảo tính tất định (deterministic)
+    for p in sorted(cells):
         sw = switch_mapping.get(p)
-        if sw is not None and can_activate_switch(sw, pose):
+        if sw is not None and sw.kind != "split" and can_activate_switch(sw, pose):
             updated_bridges = apply_switch(sw, updated_bridges)
 
     return updated_bridges
