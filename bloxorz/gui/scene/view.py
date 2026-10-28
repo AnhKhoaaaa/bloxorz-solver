@@ -1,98 +1,165 @@
-# Phụ trách: VT3 - Task 3.1 / 3.2
-"""SceneView dựng khung nhìn 3D tổng thể và điều phối hoạt ảnh."""
-
+# bloxorz/gui/scene/view.py
 from __future__ import annotations
+from typing import Optional
+from ursina import Entity, Vec3, camera, invoke
+from bloxorz.gui.scene.theme import setup_environment, set_biome
+from bloxorz.gui.scene.board import BoardMesh
+from bloxorz.gui.scene.block import BlockMesh
+from bloxorz.gui.scene.animate import animate_roll, animate_fall, animate_win
 
-from typing import TYPE_CHECKING
 
-from bloxorz.gui.scene.animate import animate_fall, animate_roll, animate_win
-from bloxorz.gui.scene.block import BlockView
-from bloxorz.gui.scene.board import BoardView
+class _BiomeKeyListener(Entity):
+    """Lắng nghe phím 1 / 2 / 3 để chuyển đổi nhanh giữa Overworld, Nether và The End."""
 
-if TYPE_CHECKING:
-    from bloxorz.model import Action, State
-    from bloxorz.stage import Stage
+    def input(self, key: str) -> None:
+        if key == "1":
+            set_biome("overworld")
+        elif key == "2":
+            set_biome("nether")
+        elif key == "3":
+            set_biome("end")
 
 
 class SceneView:
-    """Khung nhìn 3D chính của game, thực thi đầy đủ Scene Protocol của fake_scene.py."""
+    """
+    Lớp hiển thị cảnh 3D chính thức của phân hệ VT3 (Scene & Animation).
+    Thực thi đầy đủ hợp đồng giao tiếp 4 phương thức cho Controller và App:
+      1. is_animating()
+      2. load_stage(stage, state)
+      3. on_move(old, action, new)
+      4. on_fall(old, action)
+      5. on_win(state)
+    """
 
     def __init__(self) -> None:
-        self.board = BoardView()
-        self.block = BlockView()
-        self._animating: bool = False
+        self.env = setup_environment()
+        self.hotkey_listener = _BiomeKeyListener()
+        self.board: Optional[BoardMesh] = None
+        self.block: Optional[BlockMesh] = None
+        self.current_stage = None
+        self.current_state = None
+        self._is_animating: bool = False
 
     def is_animating(self) -> bool:
         """Kiểm tra scene có đang bận chạy hoạt ảnh không (phục vụ KeyBuffer)."""
-        return self._animating
+        return getattr(self, "_is_animating", False)
 
-    def _setup_camera(self, stage: Stage) -> None:
-        """Đặt góc nhìn camera isometric bao quát toàn bộ bàn cờ."""
-        from ursina import camera
+    def load_stage(self, stage, state) -> None:
+        """Khởi tạo bản đồ, dựng sàn Voxel, đặt khối gỗ sồi và căn chỉnh Camera."""
+        self.current_stage = stage
+        self.current_state = state
+        self._is_animating = False
 
-        mid_x = (stage.cols - 1) / 2.0
-        mid_z = -(stage.rows - 1) / 2.0
-        span = max(stage.rows, stage.cols, 8)
+        if self.board is not None:
+            self.board.clear_board()
+            from ursina import destroy
+            destroy(self.board)
 
-        # Đặt camera ở góc chéo phía trước nhìn xuống tâm bàn cờ
-        camera.position = (mid_x + span * 0.65, span * 1.3, mid_z - span * 1.1)
-        camera.rotation = (45, -30, 0)
+        self.board = BoardMesh(stage)
+        self.board.sync_bridges(getattr(state, "bridges_open", frozenset()), animate=False)
 
-    def load_stage(self, stage: Stage, state: State) -> None:
-        """Vẽ lại toàn bộ màn và đặt khối ở vị trí ban đầu."""
-        self._animating = False
-        self.board.build(stage, state)
-        self.block.update_from_state(state)
+        if self.block is None:
+            self.block = BlockMesh()
+
+        self.block.sync_from_state(state)
         self._setup_camera(stage)
 
-    def on_move(self, old: State, action: Action, new: State) -> None:
-        """Khối lăn sang trạng thái mới với hoạt ảnh mượt mà."""
-        self._animating = True
+    def _setup_camera(self, stage) -> None:
+        """Đặt góc nhìn Isometric 3D bao quát toàn bộ bàn cờ."""
+        cx = (stage.cols - 1) / 2.0
+        cz = -(stage.rows - 1) / 2.0
+        span = max(stage.rows, stage.cols, 8)
 
-        def finish_move() -> None:
-            self.block.update_from_state(new)
-            self.board.update_bridges(new)
-            self._animating = False
+        camera.position = Vec3(cx - span * 0.35, span * 1.15, cz - span * 1.18)
+        camera.look_at(Vec3(cx, -0.2, cz))
 
-        if old.pose is not None and new.pose is not None:
-            # Khối nguyên lăn sang vị trí mới
-            _, target_pos = self.block.target_from_state(new)
-            animate_roll(self.block.block, target_pos, on_complete=finish_move)
-        elif old.pose is None and new.pose is None:
-            # Đang ở trạng thái tách khối
-            moving_cube = self.block.cube1 if (action.cube == 0) else self.block.cube2
-            # State luôn chuẩn hóa pos < cube2 nên viên vừa đi có thể bị đổi chỗ sang cube2:
-            # đích là ô trong {new.pos, new.cube2} khác với viên đứng yên
-            still = old.cube2 if action.cube == 0 else old.pos
-            moved_to_cube2 = new.pos == still
-            if moved_to_cube2 != (action.cube == 1):
-                # Đổi entity theo để cube1 luôn là viên ở state.pos (màu đi theo đúng viên)
+    def on_move(self, old, action, new) -> None:
+        """Khối lăn sang vị trí mới, cập nhật cầu và bàn đạp áp lực."""
+        if self.block is None or self.board is None:
+            return
+
+        self.current_state = new
+        self._is_animating = True
+
+        def _after_move() -> None:
+            if self.board is not None:
+                if hasattr(self.board, "sync_bridges"):
+                    self.board.sync_bridges(getattr(new, "bridges_open", frozenset()), animate=True)
+                elif hasattr(self.board, "update_bridges"):
+                    self.board.update_bridges(new)
+
+                if hasattr(self.board, "depress_switch"):
+                    r, c = new.pos
+                    self.board.depress_switch((r, c))
+                    pose_name = getattr(new.pose, "name", "")
+                    pose_val = getattr(new.pose, "value", new.pose)
+                    if pose_val == 1 or pose_name == "HORIZONTAL":
+                        self.board.depress_switch((r, c + 1))
+                    elif pose_val == 2 or pose_name == "VERTICAL":
+                        self.board.depress_switch((r + 1, c))
+            self._is_animating = False
+
+        # Trường hợp tách khối
+        if getattr(old, "pose", None) is None and getattr(new, "pose", None) is None:
+            action_cube = getattr(action, "cube", 0)
+            moving_cube = self.block.cube1 if (action_cube == 0) else self.block.cube2
+            still = old.cube2 if action_cube == 0 else old.pos
+            moved_to_cube2 = (new.pos == still)
+            if moved_to_cube2 != (action_cube == 1):
                 self.block.cube1, self.block.cube2 = self.block.cube2, self.block.cube1
             r, c = new.cube2 if moved_to_cube2 else new.pos
             target_pos = (float(c), 0.55, -float(r))
-            animate_roll(moving_cube, target_pos, on_complete=finish_move)
-        else:
-            # Tách khối hoặc ghép khối
-            finish_move()
 
-    def on_fall(self, old: State, action: Action) -> None:
-        """Khối bị rơi ra ngoài mép hoặc gạch vỡ."""
-        self._animating = True
+            def _finish_split() -> None:
+                if hasattr(self.block, "update_from_state"):
+                    self.block.update_from_state(new)
+                elif hasattr(self.block, "sync_from_state"):
+                    self.block.sync_from_state(new)
+                _after_move()
 
-        def finish_fall() -> None:
-            self._animating = False
+            animate_roll(moving_cube, target_pos, on_complete=_finish_split)
+            return
 
-        target_entity = self.block.block if old.pose is not None else (
-            self.block.cube1 if action.cube == 0 else self.block.cube2
-        )
-        animate_fall(target_entity, on_complete=finish_fall)
+        # Khối nguyên vẹn
+        try:
+            animate_roll(self.block, old, action, new, on_complete=_after_move)
+        except TypeError:
+            r, c = new.pos
+            target_pos = (float(c), 0.55, -float(r))
+            animate_roll(getattr(self.block, "block", self.block), target_pos, on_complete=_after_move)
 
-    def on_win(self, state: State) -> None:
-        """Khối đứng vào đích và tụt xuống lỗ chiến thắng."""
-        self._animating = True
+    def on_fall(self, old, action) -> None:
+        """Khối bị rơi khỏi sàn (gọi hoạt ảnh lộn nhào rơi xuống vực và rung nhẹ camera)."""
+        if self.block is None:
+            return
 
-        def finish_win() -> None:
-            self._animating = False
+        self._is_animating = True
+        orig_cam_pos = Vec3(camera.position)
 
-        animate_win(self.block.block, on_complete=finish_win)
+        def _shake(step: int = 0) -> None:
+            if step >= 5:
+                camera.position = orig_cam_pos
+                return
+            offset = 0.08 if step % 2 == 0 else -0.08
+            camera.position = orig_cam_pos + Vec3(offset, offset * 0.5, 0)
+            invoke(_shake, step + 1, delay=0.04)
 
+        def _finish_fall() -> None:
+            self._is_animating = False
+
+        invoke(_shake, 0)
+        target_entity = getattr(self.block, "block", self.block)
+        animate_fall(target_entity, old, action, on_complete=_finish_fall)
+
+    def on_win(self, state) -> None:
+        """Khối đứng vào Cổng End (hạ từ từ xuống lòng cổng và phát pháo hoa pixel)."""
+        if self.block is None:
+            return
+
+        self._is_animating = True
+
+        def _finish_win() -> None:
+            self._is_animating = False
+
+        target_entity = getattr(self.block, "block", self.block)
+        animate_win(target_entity, on_complete=_finish_win)

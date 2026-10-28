@@ -1,91 +1,125 @@
-# Phụ trách: VT3 - Task 3.1 / 3.3
-"""Vẽ khối hộp Bloxorz (khối đơn và 2 khối sau khi tách)."""
-
+# bloxorz/gui/scene/block.py
 from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from bloxorz.model import Pose
-
-if TYPE_CHECKING:
-    from bloxorz.model import State
+from typing import Optional
+from ursina import Entity, Vec3
+from bloxorz.gui.scene.theme import VoxelTextures
+from bloxorz.gui.scene.board import grid_to_world
 
 
-class BlockView:
-    """Quản lý hiển thị 3D của khối Bloxorz (kích thước, vị trí và 3 tư thế)."""
+class OakCubeUnit(Entity):
+    """Một đơn vị khối gỗ sồi 1x1x1 có 4 mặt bên là vỏ cây và 2 mặt đáy là vòng gỗ."""
+
+    def __init__(self, parent: Entity, position: Vec3 = Vec3(0, 0, 0)) -> None:
+        super().__init__(
+            parent=parent,
+            model="cube",
+            position=position,
+            scale=(1.0, 1.0, 1.0),
+            texture=VoxelTextures.oak_bark(),
+        )
+        tex_rings = VoxelTextures.oak_top()
+        # Nắp vân vòng gỗ phía trên (+Y)
+        Entity(
+            parent=self,
+            model="quad",
+            position=(0, 0.501, 0),
+            rotation=(90, 0, 0),
+            texture=tex_rings,
+        )
+        # Nắp vân vòng gỗ phía dưới (-Y)
+        Entity(
+            parent=self,
+            model="quad",
+            position=(0, -0.501, 0),
+            rotation=(-90, 0, 0),
+            texture=tex_rings,
+        )
+
+
+class BlockMesh(Entity):
+    """
+    Thực thể đại diện cho khối Bloxorz Gỗ Sồi (1x1x2).
+    Sử dụng cấu trúc Pivot -> Visual để xoay lật 90 độ quanh cạnh đáy tiếp xúc sàn.
+    """
 
     def __init__(self) -> None:
-        from ursina import Entity, color
+        super().__init__()
+        # Nhóm chứa hình ảnh khối gỗ (gồm 2 đơn vị OakCubeUnit 1x1x1)
+        self.visual = Entity(parent=self)
+        self.bottom_unit = OakCubeUnit(parent=self.visual, position=Vec3(0, -0.5, 0))
+        self.top_unit = OakCubeUnit(parent=self.visual, position=Vec3(0, 0.5, 0))
 
-        # Khối hộp chính 1x1x2 (màu cam gỗ đặc trưng của Bloxorz)
-        self.block = Entity(
-            model="cube",
-            color=color.rgb32(220, 125, 45),
-            position=(0, 0, 0),
-            scale=(1, 2, 1),
-            visible=False,
-        )
+        # Khối phụ dùng khi người chơi ở trạng thái tách đôi (Split Block: pose is None)
+        self.split_unit_a = OakCubeUnit(parent=self, position=Vec3(0, 0.5, 0))
+        self.split_unit_b = OakCubeUnit(parent=self, position=Vec3(0, 0.5, 0))
+        self.split_unit_a.enabled = False
+        self.split_unit_b.enabled = False
+        self.cube1 = self.split_unit_a
+        self.cube2 = self.split_unit_b
+        self.block = self
 
-        # 2 khối lập phương con khi bị phân tách (chuẩn bị trước cho Task 3.3)
-        self.cube1 = Entity(
-            model="cube",
-            color=color.rgb32(235, 145, 65),
-            scale=(0.92, 0.92, 0.92),
-            visible=False,
-        )
-        self.cube2 = Entity(
-            model="cube",
-            color=color.rgb32(195, 105, 35),
-            scale=(0.92, 0.92, 0.92),
-            visible=False,
-        )
-
-    def target_from_state(self, state: State) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
-        """Trả về (scale, position) cho khối nguyên dựa trên state."""
+    def sync_from_state(self, state) -> None:
+        """
+        Đồng bộ chính xác vị trí, kích thước và góc xoay từ State của engine:
+        - STANDING (0): Cao 2 theo Y, tâm ở y = 1.0
+        - HORIZONTAL (1): Rộng 2 theo X (c..c+1), tâm ở x = c + 0.5, y = 0.5
+        - VERTICAL (2): Dài 2 theo Z (r..r+1), tâm ở z = -r - 0.5, y = 0.5
+        - None (Split): Hiển thị 2 khối đơn 1x1x1 tại state.pos và state.cube2
+        """
         r, c = state.pos
-        if state.pose == Pose.STANDING:
-            return (0.92, 1.92, 0.92), (float(c), 1.05, -float(r))
-        elif state.pose == Pose.HORIZONTAL:
-            return (1.92, 0.92, 0.92), (float(c) + 0.5, 0.55, -float(r))
-        elif state.pose == Pose.VERTICAL:
-            return (0.92, 0.92, 1.92), (float(c), 0.55, -float(r) - 0.5)
-        return (0.92, 0.92, 0.92), (float(c), 0.55, -float(r))
+        pose_val = getattr(state.pose, "value", state.pose)
 
-    def update_from_state(self, state: State) -> None:
-        """Cập nhật kích thước và tọa độ 3D của khối dựa trên State."""
-        # Khôi phục góc xoay chuẩn (phòng trường hợp vừa xoay rơi vực)
-        self.block.rotation = (0, 0, 0)
-        self.cube1.rotation = (0, 0, 0)
-        self.cube2.rotation = (0, 0, 0)
+        # Reset toàn bộ biến đổi của Pivot gốc và Visual con
+        self.position = Vec3(0, 0, 0)
+        self.rotation = Vec3(0, 0, 0)
+        self.scale = Vec3(1, 1, 1)
+        self.visual.scale = Vec3(1, 1, 1)
 
-        if state.pose is None:
-            # Khối đang bị tách làm 2 cube 1x1x1
-            self.block.visible = False
+        if state.pose is None and getattr(state, "cube2", None) is not None:
+            # Trạng thái tách thành 2 khối đơn 1x1x1
+            self.visual.enabled = False
+            self.split_unit_a.enabled = True
+            self.split_unit_b.enabled = True
 
-            r1, c1 = state.pos
-            self.cube1.position = (float(c1), 0.55, -float(r1))
-            self.cube1.visible = True
-
-            if state.cube2 is not None:
-                r2, c2 = state.cube2
-                self.cube2.position = (float(c2), 0.55, -float(r2))
-                self.cube2.visible = True
-            else:
-                self.cube2.visible = False
+            r2, c2 = state.cube2
+            self.split_unit_a.position = grid_to_world(r, c, y=0.5)
+            self.split_unit_a.rotation = Vec3(0, 0, 0)
+            self.split_unit_b.position = grid_to_world(r2, c2, y=0.5)
+            self.split_unit_b.rotation = Vec3(0, 0, 0)
             return
 
-        # Khối nguyên vẹn 1x1x2
-        self.cube1.visible = False
-        self.cube2.visible = False
-        self.block.visible = True
+        self.visual.enabled = True
+        self.split_unit_a.enabled = False
+        self.split_unit_b.enabled = False
+        self.cube1 = self.split_unit_a
+        self.cube2 = self.split_unit_b
+        self.block = self
 
-        scale, pos = self.target_from_state(state)
-        self.block.scale = scale
-        self.block.position = pos
+        if pose_val == 0 or getattr(state.pose, "name", "") == "STANDING":
+            # Đứng thẳng 1x2x1 tại (r, c)
+            self.visual.position = Vec3(float(c), 1.0, float(-r))
+            self.visual.rotation = Vec3(0, 0, 0)
 
-    def hide(self) -> None:
-        """Ẩn toàn bộ khối."""
-        self.block.visible = False
-        self.cube1.visible = False
-        self.cube2.visible = False
+        elif pose_val == 1 or getattr(state.pose, "name", "") == "HORIZONTAL":
+            # Nằm ngang dọc trục X: chiếm (r, c) và (r, c + 1)
+            self.visual.position = Vec3(float(c) + 0.5, 0.5, float(-r))
+            self.visual.rotation = Vec3(0, 0, 90)
 
+        elif pose_val == 2 or getattr(state.pose, "name", "") == "VERTICAL":
+            # Nằm dọc theo trục Z: chiếm (r, c) và (r + 1, c)
+            self.visual.position = Vec3(float(c), 0.5, float(-r) - 0.5)
+            self.visual.rotation = Vec3(90, 0, 0)
+
+    def get_center_world_pos(self, state) -> Vec3:
+        """Lấy tọa độ tâm của khối trên mặt phẳng bàn cờ để Camera hướng tới."""
+        r, c = state.pos
+        pose_val = getattr(state.pose, "value", state.pose)
+        if state.pose is None:
+            return Vec3(float(c), 0.0, float(-r))
+        if pose_val == 1 or getattr(state.pose, "name", "") == "HORIZONTAL":
+            return Vec3(float(c) + 0.5, 0.0, float(-r))
+        if pose_val == 2 or getattr(state.pose, "name", "") == "VERTICAL":
+            return Vec3(float(c), 0.0, float(-r) - 0.5)
+        return Vec3(float(c), 0.0, float(-r))
+    def update_from_state(self, state) -> None:
+        self.sync_from_state(state)
