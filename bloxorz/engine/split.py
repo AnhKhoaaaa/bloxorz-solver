@@ -84,7 +84,7 @@ def split_block(stage: Stage, state: State, switch: Switch) -> State | None:
     - Tự động ghép lại nếu 2 vị trí mục tiêu kề nhau.
     - Trả về State mới (tách hoặc ghép) hoặc None nếu không hợp lệ.
     """
-    if state.pose != Pose.STANDING or switch.kind != "split":
+    if state.pose != Pose.STANDING or switch.kind != "split" or state.pos != switch.pos:
         return None
     if switch.targets is None or len(switch.targets) != 2:
         return None
@@ -194,6 +194,8 @@ def step_split(state: State, action: Action, stage: Stage) -> State | None:
     new_bridges = trigger_switches(stage, None, (new_p,), state.bridges_open)
 
     # 4. Kiểm tra lại an toàn cho cube còn lại (phòng trường hợp công tắc làm sập cầu dưới chân cube kia)
+    if not stage.in_bounds(p_other) or stage.cell(p_other) in (".", "G"):
+        return None
     if p_other in stage.bridge_at:
         other_bridge_id = stage.bridge_at[p_other]
         if other_bridge_id not in new_bridges:

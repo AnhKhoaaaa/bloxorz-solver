@@ -192,6 +192,7 @@ def test_split_block_rejects_non_standing_or_non_split_switch():
     )
     assert split_block(stage, State(Pose.HORIZONTAL, (0, 0)), sw_split) is None
     assert split_block(stage, State(Pose.STANDING, (0, 0)), sw_soft) is None
+    assert split_block(stage, State(Pose.STANDING, (0, 1)), sw_split) is None
 
 
 # ==============================================================================
@@ -398,6 +399,9 @@ def test_step_split_single_cube_falls_if_moving_into_goal(flat_stage):
     s = State(pose=None, pos=(0, 1), cube2=(2, 1))
     # Cube 0 đi DOWN -> (1, 1) [ô Goal]. Nhưng cube đơn không được đi vào Goal -> rơi ngay!
     assert step(s, Action(Direction.DOWN, cube=0), st) is None
+    # Ngược lại, nếu một State không hợp lệ có sẵn 1 cube trên ô 'G' (1, 1), cube kia tiến tới kề cũng bị từ chối
+    s_invalid = State(pose=None, pos=(0, 0), cube2=(1, 1))
+    assert step(s_invalid, Action(Direction.RIGHT, cube=0), st) is None
 
 
 # ==============================================================================
