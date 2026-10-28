@@ -21,7 +21,7 @@
     {"id": "bridgeE", "cells": [[6, 14]], "initially_open": false}
   ],
   "switches": [
-    {"id": "s1", "kind": "heavy", "pos": [1, 2], "mode": "permanent", "set_to": "open", "bridges": ["bridgeB"]},
+    {"id": "s1", "kind": "soft", "pos": [1, 2], "mode": "permanent", "set_to": "open", "bridges": ["bridgeB"]},
     {"id": "s2", "kind": "soft", "pos": [1, 13], "actions": [["bridgeC", "open"], ["bridgeD", "toggle"]]},
     {"id": "s3", "kind": "soft", "pos": [3, 14], "mode": "permanent", "set_to": "close", "bridges": ["bridgeC", "bridgeE"]},
     {"id": "s4", "kind": "soft", "pos": [5, 0], "actions": [["bridgeA", "open"], ["bridgeC", "close"]]},
