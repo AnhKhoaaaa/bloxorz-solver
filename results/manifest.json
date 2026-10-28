@@ -1,0 +1,32 @@
+{
+  "label": "LOCAL SAMPLE - 2026-10-28 (not Task 1.7)",
+  "input": {
+    "path": "results/sample/bench.csv",
+    "sha256": "01fc1357563ae910c7df356e2554e961a37acc659e5663528aa6b5ab390ebd25",
+    "rows": 85,
+    "stages": 17,
+    "commit": "acc01c6",
+    "python": "3.12.10",
+    "machine": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+  },
+  "hash_normalization": "file bytes with CRLF normalized to LF before SHA-256",
+  "original": {
+    "path": "results/sample/original.csv",
+    "sha256": "d2cf2008bdd62adab28f8a4278f05b2337f13b0f79b3471c34aca1dcd7026b52",
+    "rows": 165,
+    "stages": 33,
+    "commit": "acc01c6",
+    "python": "3.12.10",
+    "machine": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+  },
+  "figures": [
+    "expanded.png",
+    "time.png",
+    "memory.png",
+    "heuristics.png",
+    "length_cost.png"
+  ],
+  "statistics": "solved and verified=True only; failures retained as bottom symbols",
+  "time": "median of runner timings, including heuristic preparation; sample count retained",
+  "memory": "separate tracemalloc peak in KB (bytes/1024), not process RSS"
+}
