@@ -110,8 +110,7 @@ def is_valid_state(state: State, stage: Stage) -> bool:
     - Bất kỳ ô nào của khối nằm trên ô trống (void '.').
     - Ô thuộc một cây cầu nhưng cây cầu đó chưa được mở (không có trong state.bridges_open).
     - Khối ở tư thế STANDING trên ô gạch dễ vỡ (fragile tile) -> gạch vỡ khiến khối rơi.
-    - Khối ở tư thế nằm (HORIZONTAL hoặc VERTICAL) đè qua ô đích 'G' -> 'G' là một lỗ vuông,
-      nằm đè qua lỗ sẽ bị rơi xuống lỗ.
+    - Khối bị tách (pose is None) có cube 1x1x1 đi vào lỗ đích 'G' -> rơi xuống lỗ (nhưng khối 1x1x2 nằm đè qua 'G' vẫn an toàn).
     """
     if state.pose is None:
         # Trường hợp khối đang bị phân tách thành 2 cube con 1x1x1
@@ -147,12 +146,7 @@ def is_valid_state(state: State, stage: Stage) -> bool:
             if bridge_id not in state.bridges_open:
                 return False
 
-        # 4. Kiểm tra ô đích 'G'
-        # Chỉ được phép đứng vào lỗ đích, nếu nằm đè qua lỗ đích sẽ bị rơi
-        if ch == "G" and state.pose != Pose.STANDING:
-            return False
-
-        # 5. Kiểm tra gạch dễ vỡ (fragile tile)
+        # 4. Kiểm tra gạch dễ vỡ (fragile tile)
         # Chỉ gãy khi khối đứng dồn toàn bộ trọng lượng lên 1 ô
         if ch in FRAGILE_TILES and state.pose == Pose.STANDING:
             return False

@@ -7,7 +7,7 @@ Các nguyên tắc thứ tự xử lý cốt lõi:
 2. Gạch vỡ trước khi đứng: Khối đứng lên gạch dễ vỡ 'F' bị vỡ gạch và rơi, KHÔNG kích hoạt công tắc trên ô đó.
 3. Sập cầu dưới chân: Khối kích hoạt công tắc đóng cây cầu mà khối đang đứng đè lên một phần -> mất điểm tựa và rơi.
 4. Nhiều công tắc kích hoạt đồng thời: Thứ tự duyệt switch phải nhất quán và xác định (deterministic) theo tọa độ ô.
-5. Lỗ đích 'G' vs Khối nằm: Khối nằm đè qua Goal bị rơi xuống lỗ ngay lập tức.
+5. Lỗ đích 'G' vs Khối nằm: Khối 1x1x2 nằm đè qua Goal và sàn bên cạnh vẫn an toàn (chưa thắng), chỉ thắng khi STANDING.
 6. Thứ tự phân tách (Split): Tiếp đất an toàn -> dịch chuyển 2 cube tới targets -> kích hoạt soft switch tại targets -> tự động ghép lại nếu kề nhau.
 7. Thứ tự ghép khối (Rejoin): Cube tiếp đất -> kích hoạt soft switch tại ô mới -> tự động ghép khối khi kề nhau -> kiểm tra an toàn của khối mới ghép.
 8. Sập cầu dưới chân cube đồng đội: Cube 0 đạp switch đóng cầu mà Cube 1 đang đứng -> Cube 1 rơi -> nước đi thất bại (None).
@@ -212,19 +212,22 @@ def test_multi_switch_order_deterministic_close_then_open():
 # 4. Lỗ đích Goal ('G') vs Khối nằm & Cube đơn lẻ
 # ==============================================================================
 
-def test_lying_across_goal_falls_immediately():
-    """Khối nằm ngang đè qua ô Goal 'G' là một lỗ vuông -> rơi vào lỗ ngay lập tức."""
+def test_lying_across_goal_is_safe_but_not_win():
+    """Khối 1x1x2 nằm ngang đè qua ô Goal 'G' và ô sàn '#' bên cạnh vẫn an toàn nhưng chưa thắng."""
     stage = Stage(
-        id="goal_fall",
+        id="goal_lie_safe",
         group="G1",
         grid=("S#G",),
         start=(0, 0),
         goal=(0, 2),
     )
     s0 = initial_state(stage)
-    # Lăn R -> HORIZONTAL chiếm (0, 1) [#] và (0, 2) [G] -> Rơi xuống lỗ!
+    # Lăn R -> HORIZONTAL chiếm (0, 1) [#] và (0, 2) [G] -> Hợp lệ nhưng chưa phải Goal
     next_s = step(s0, Action(Direction.RIGHT), stage)
-    assert next_s is None
+    assert next_s is not None
+    assert next_s.pose == Pose.HORIZONTAL
+    assert next_s.pos == (0, 1)
+    assert is_goal(next_s, stage) is False
 
 
 def test_standing_on_goal_wins():
