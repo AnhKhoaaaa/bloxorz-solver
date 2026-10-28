@@ -80,10 +80,12 @@ def split_block(stage: Stage, state: State, switch: Switch) -> State | None:
     Kích hoạt phân tách khối khi khối nguyên vẹn đứng thẳng trên ô split switch:
     - Dịch chuyển 2 cube đến hai vị trí switch.targets.
     - Kiểm tra an toàn của 2 vị trí mục tiêu.
-    - Kích hoạt soft switch nếu có tại 2 vị trí mục tiêu.
+    - Kích hoạt soft switch nếu có tại 2 vị trí mục tiêu (theo thứ tự tọa độ tăng dần).
     - Tự động ghép lại nếu 2 vị trí mục tiêu kề nhau.
     - Trả về State mới (tách hoặc ghép) hoặc None nếu không hợp lệ.
     """
+    if state.pose != Pose.STANDING or switch.kind != "split":
+        return None
     if switch.targets is None or len(switch.targets) != 2:
         return None
 
@@ -105,8 +107,9 @@ def split_block(stage: Stage, state: State, switch: Switch) -> State | None:
             if bridge_id not in state.bridges_open:
                 return None
 
-    # 3. Kích hoạt soft switch nếu có tại các ô mục tiêu
-    new_bridges = trigger_switches(stage, None, (t1, t2), state.bridges_open)
+    # 3. Kích hoạt soft switch nếu có tại các ô mục tiêu (theo thứ tự tọa độ nhất quán)
+    ordered_targets = (t1, t2) if t1 < t2 else (t2, t1)
+    new_bridges = trigger_switches(stage, None, ordered_targets, state.bridges_open)
 
     # 4. Kiểm tra xem 2 vị trí mục tiêu có kề nhau để tự động ghép lại không
     merged = try_merge_cubes(t1, t2, new_bridges)

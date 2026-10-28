@@ -274,6 +274,13 @@ def test_step_illegal_move_returns_none(basic_stage):
     assert step(start_state, Action(Direction.LEFT), basic_stage) is None
 
 
+def test_step_intact_block_with_cube_index_returns_none(basic_stage):
+    """Khi khối nguyên vẹn (pose != None), truyền action.cube != None là không hợp lệ -> trả về None."""
+    start_state = State(Pose.STANDING, (0, 0))
+    assert step(start_state, Action(Direction.RIGHT, cube=0), basic_stage) is None
+    assert step(start_state, Action(Direction.RIGHT, cube=1), basic_stage) is None
+
+
 def test_fragile_tile_with_standard_symbol_f():
     """Kiểm tra ô gạch dễ vỡ với ký hiệu chuẩn 'F' (theo quy định đề án và loader)."""
     grid = ("###", "#F#", "##G")

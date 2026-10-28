@@ -163,6 +163,29 @@ def test_trigger_switches_standing_on_heavy_switch_triggers():
     assert result == frozenset({"b1"})
 
 
+def test_trigger_switches_sorts_cells_deterministically():
+    """Hàm trigger_switches luôn duyệt cells theo thứ tự tọa độ tăng dần ngay cả khi truyền ngược."""
+    sw_open = Switch(id="s1", kind="soft", pos=(0, 1), mode="permanent", set_to="open", bridges=("b1",))
+    sw_close = Switch(id="s2", kind="soft", pos=(0, 2), mode="permanent", set_to="close", bridges=("b1",))
+    stage = Stage(
+        id="sw_sort",
+        group="G2",
+        grid=("####",),
+        start=(0, 0),
+        goal=(0, 3),
+        switches=(sw_open, sw_close),
+    )
+    # Dù truyền [(0, 2), (0, 1)], vẫn phải xử lý (0, 1) mở trước rồi (0, 2) đóng sau -> kết quả đóng
+    result = trigger_switches(stage, Pose.HORIZONTAL, [(0, 2), (0, 1)], frozenset())
+    assert result == frozenset()
+
+
+def test_apply_bridge_action_invalid_raises():
+    """Truyền hành động cầu không hợp lệ vào apply_bridge_action phải báo lỗi ValueError."""
+    with pytest.raises(ValueError):
+        apply_bridge_action(frozenset(), "b1", "invalid_action")  # type: ignore[arg-type]
+
+
 # ==============================================================================
 # 4. Kiểm tra tương tác qua bước di chuyển (step)
 # ==============================================================================

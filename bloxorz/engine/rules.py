@@ -178,6 +178,9 @@ def step(state: State, action: Action, stage: Stage) -> State | None:
     if state.pose is None:
         return step_split(state, action, stage)
 
+    if action.cube is not None:
+        return None
+
     new_pose, new_pos = roll_transition(state.pose, state.pos, action.direction)
 
     # 1. Kiểm tra an toàn tại thời điểm tiếp đất (dựa trên trạng thái cầu hiện tại)

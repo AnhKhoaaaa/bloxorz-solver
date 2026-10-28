@@ -283,6 +283,33 @@ def test_split_switch_triggers_soft_switches_at_targets():
     assert "b1" in s2.bridges_open
 
 
+def test_split_switch_targets_trigger_in_coordinate_order():
+    """
+    Khi split switch có targets=(t1, t2) với t1 > t2:
+    Soft switches tại targets vẫn phải được duyệt theo thứ tự tọa độ tăng dần (min trước, max sau).
+    """
+    bridge = Bridge(id="b1", cells=((2, 5),), initially_open=False)
+    # Tại (2, 0) mở b1, tại (2, 3) đóng b1. Dù targets khai báo ((2, 3), (2, 0)),
+    # thứ tự tọa độ tăng dần là (2, 0) mở rồi (2, 3) đóng -> kết quả b1 đóng!
+    sw_open = Switch(id="s_open", kind="soft", pos=(2, 0), mode="permanent", set_to="open", bridges=("b1",))
+    sw_close = Switch(id="s_close", kind="soft", pos=(2, 3), mode="permanent", set_to="close", bridges=("b1",))
+    sw_split = Switch(id="s_split", kind="split", pos=(0, 3), targets=((2, 3), (2, 0)))
+    stage = Stage(
+        id="split_order",
+        group="G3",
+        grid=("S###...", ".......", "####.BG"),
+        start=(0, 0),
+        goal=(2, 6),
+        bridges=(bridge,),
+        switches=(sw_open, sw_close, sw_split),
+    )
+    s0 = initial_state(stage)
+    s1 = step(s0, Action(Direction.RIGHT), stage)
+    s2 = step(s1, Action(Direction.RIGHT), stage)
+    assert s2 is not None
+    assert "b1" not in s2.bridges_open
+
+
 def test_cube_0_triggers_switch_closing_bridge_under_cube_1():
     """
     Trạng thái phân tách:
