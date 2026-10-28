@@ -22,12 +22,12 @@ except ImportError:
 
 class SmoothOrbitCamera(Entity):
     """
-    Tái hiện toàn bộ hệ thống Camera Cinematic từ bản Three.js / HTML:
+    Hệ thống Camera Cinematic thuần Python (Ursina/Panda3D):
       1. Phối cảnh giả đẳng cự (Perspective Pseudo-Isometric: FOV 42, theta 0.55 rad, phi 0.92 rad)
       2. Tọa độ cầu có kẹp biên chặt chẽ (Spherical Orbit: radius, theta, phi)
       3. Bám mục tiêu trễ có quán tính (Dynamic Target Lerp / Spring Damping: factor 0.08)
       4. Rung chấn Camera suy giảm hàm mũ khi rơi vực (Decaying Camera Shake: decay 0.88)
-      5. Kéo chuột xoay mượt + Con lăn Zoom + Phím C góc vàng + Phím T Top-down + Q/E xoay 45°
+      5. Kéo chuột xoay mượt + Con lăn Zoom + Phím C/V góc vàng + Phím T Top-down + Q/E xoay 45°
     """
 
     DEFAULT_THETA = 0.55   # ~31 độ
@@ -61,11 +61,12 @@ class SmoothOrbitCamera(Entity):
         # Khởi tạo vị trí ban đầu
         self._recompute_camera(instant=True)
 
-    def set_target(self, target: Vec3, radius: float | None = None) -> None:
+    def set_target(self, target: Vec3, radius: float | None = None, distance: float | None = None) -> None:
         """Đặt mục tiêu mới cho Camera (tâm bàn cờ hoặc tâm khối gỗ)."""
         self.target_pos = Vec3(target)
-        if radius is not None:
-            self.default_radius = max(self.min_radius, min(self.max_radius, radius))
+        r = radius if radius is not None else distance
+        if r is not None:
+            self.default_radius = max(self.min_radius, min(self.max_radius, r))
             self.radius = self.default_radius
 
     def trigger_shake(self, intensity: float = 0.25) -> None:
@@ -103,7 +104,7 @@ class SmoothOrbitCamera(Entity):
             set_biome("nether")
         elif key == "3":
             set_biome("end")
-        elif key == "c":
+        elif key in ("c", "v"):
             self.reset_view()
         elif key == "t":
             self.top_down_view()
@@ -155,3 +156,7 @@ class SmoothOrbitCamera(Entity):
 
         camera.position = Vec3(cam_x, cam_y, cam_z)
         camera.look_at(self.current_look)
+
+
+GimbalOrbitCamera = SmoothOrbitCamera
+OrbitCameraController = SmoothOrbitCamera

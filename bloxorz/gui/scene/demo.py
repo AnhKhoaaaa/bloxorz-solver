@@ -8,6 +8,11 @@ from pathlib import Path
 from typing import Dict, FrozenSet, List, Optional, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = ROOT_DIR.parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from ursina import (  # noqa: E402
     Ursina,
@@ -63,6 +68,8 @@ class _FallbackState:
 
 def _scan_all_stage_files() -> List[Path]:
     stages_dir = ROOT_DIR / "stages"
+    if not stages_dir.exists():
+        stages_dir = REPO_ROOT / "stages"
     stage_files: List[Path] = []
     orig_dir = stages_dir / "original"
     if orig_dir.exists():
@@ -71,17 +78,18 @@ def _scan_all_stage_files() -> List[Path]:
         stage_files.extend(orig_files)
     fix_dir = stages_dir / "fixtures"
     if fix_dir.exists():
-        stage_files.extend(sorted(fix_dir.glob("*.json")))
+        fix_files = sorted(fix_dir.glob("*.json"))
+        stage_files.extend(fix_files)
     return stage_files
 
 
 def _load_single_stage(path: Path) -> Tuple[_FallbackStage, _FallbackState]:
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    data = json.loads(path.read_text(encoding="utf-8"))
     raw_grid = data["grid"]
     rows = len(raw_grid)
     cols = max(len(r) for r in raw_grid)
     grid = [r.ljust(cols, ".") for r in raw_grid]
+
     start = (0, 0)
     goal = (0, 0)
     for r in range(rows):
@@ -91,21 +99,20 @@ def _load_single_stage(path: Path) -> Tuple[_FallbackStage, _FallbackState]:
             elif grid[r][c] == "G":
                 goal = (r, c)
 
-    bridge_at = {}
+    bridge_at: Dict[Tuple[int, int], str] = {}
     init_open = set()
     for b in data.get("bridges", []):
         bid = b["id"]
         if b.get("initially_open", False):
             init_open.add(bid)
-        for r, c in b.get("cells", []):
-            bridge_at[(r, c)] = bid
+        for cell in b.get("cells", []):
+            bridge_at[(cell[0], cell[1])] = bid
 
-    switch_at = {}
+    switch_at: Dict[Tuple[int, int], dict] = {}
     for sw in data.get("switches", []):
-        r, c = sw["pos"]
-        switch_at[(r, c)] = sw
+        pos = (sw["pos"][0], sw["pos"][1])
+        switch_at[pos] = sw
 
-    init_b = frozenset(init_open)
     stg = _FallbackStage(
         id=data.get("id", path.stem),
         grid=grid,
@@ -115,31 +122,48 @@ def _load_single_stage(path: Path) -> Tuple[_FallbackStage, _FallbackState]:
         goal=goal,
         switch_at=switch_at,
         bridge_at=bridge_at,
-        initial_bridges=init_b,
+        initial_bridges=frozenset(init_open),
     )
-    st = _FallbackState(pos=start, pose=_FallbackPose.STANDING, bridges_open=init_b)
+    st = _FallbackState(
+        pos=start,
+        pose=_FallbackPose.STANDING,
+        bridges_open=frozenset(init_open),
+    )
     return stg, st
 
 
-def _fallback_step(stg: _FallbackStage, st: _FallbackState, act: _FallbackAction):
+def _fallback_step(stg: _FallbackStage, st: _FallbackState, action) -> Optional[_FallbackState]:
     r, c = st.pos
-    p = st.pose
-    if act == _FallbackAction.LEFT:
-        nr, nc, np = (r, c - 2, _FallbackPose.HORIZONTAL) if p == _FallbackPose.STANDING else (
-            (r, c - 1, _FallbackPose.STANDING) if p == _FallbackPose.HORIZONTAL else (r, c - 1, _FallbackPose.VERTICAL)
-        )
-    elif act == _FallbackAction.RIGHT:
-        nr, nc, np = (r, c + 1, _FallbackPose.HORIZONTAL) if p == _FallbackPose.STANDING else (
-            (r, c + 2, _FallbackPose.STANDING) if p == _FallbackPose.HORIZONTAL else (r, c + 1, _FallbackPose.VERTICAL)
-        )
-    elif act == _FallbackAction.UP:
-        nr, nc, np = (r - 2, c, _FallbackPose.VERTICAL) if p == _FallbackPose.STANDING else (
-            (r - 1, c, _FallbackPose.STANDING) if p == _FallbackPose.VERTICAL else (r - 1, c, _FallbackPose.HORIZONTAL)
-        )
-    else:  # DOWN
-        nr, nc, np = (r + 1, c, _FallbackPose.VERTICAL) if p == _FallbackPose.STANDING else (
-            (r + 2, c, _FallbackPose.STANDING) if p == _FallbackPose.VERTICAL else (r + 1, c, _FallbackPose.HORIZONTAL)
-        )
+    act_name = getattr(action, "name", str(action)).upper()
+    pose = st.pose
+
+    if pose == _FallbackPose.STANDING:
+        if act_name == "LEFT":
+            nr, nc, np = r, c - 2, _FallbackPose.HORIZONTAL
+        elif act_name == "RIGHT":
+            nr, nc, np = r, c + 1, _FallbackPose.HORIZONTAL
+        elif act_name == "UP":
+            nr, nc, np = r - 2, c, _FallbackPose.VERTICAL
+        else:
+            nr, nc, np = r + 1, c, _FallbackPose.VERTICAL
+    elif pose == _FallbackPose.HORIZONTAL:
+        if act_name == "LEFT":
+            nr, nc, np = r, c - 1, _FallbackPose.STANDING
+        elif act_name == "RIGHT":
+            nr, nc, np = r, c + 2, _FallbackPose.STANDING
+        elif act_name == "UP":
+            nr, nc, np = r - 1, c, _FallbackPose.HORIZONTAL
+        else:
+            nr, nc, np = r + 1, c, _FallbackPose.HORIZONTAL
+    else:  # VERTICAL
+        if act_name == "LEFT":
+            nr, nc, np = r, c - 1, _FallbackPose.VERTICAL
+        elif act_name == "RIGHT":
+            nr, nc, np = r, c + 1, _FallbackPose.VERTICAL
+        elif act_name == "UP":
+            nr, nc, np = r - 1, c, _FallbackPose.STANDING
+        else:
+            nr, nc, np = r + 2, c, _FallbackPose.STANDING
 
     cells = [(nr, nc)]
     if np == _FallbackPose.HORIZONTAL:
@@ -147,28 +171,9 @@ def _fallback_step(stg: _FallbackStage, st: _FallbackState, act: _FallbackAction
     elif np == _FallbackPose.VERTICAL:
         cells.append((nr + 1, nc))
 
-    # Cập nhật công tắc và cầu
     new_bridges = set(st.bridges_open)
     for cr, cc in cells:
-        sw = stg.switch_at.get((cr, cc))
-        if sw:
-            kind = sw.get("kind", "soft")
-            mode = sw.get("mode", "toggle")
-            if kind != "heavy" or np == _FallbackPose.STANDING:
-                for bid in sw.get("bridges", []):
-                    if mode == "toggle":
-                        if bid in new_bridges:
-                            new_bridges.remove(bid)
-                        else:
-                            new_bridges.add(bid)
-                    elif mode == "open":
-                        new_bridges.add(bid)
-                    elif mode == "close":
-                        new_bridges.discard(bid)
-
-    # Kiểm tra hợp lệ bước đi
-    for cr, cc in cells:
-        if cr < 0 or cr >= stg.rows or cc < 0 or cc >= stg.cols:
+        if not (0 <= cr < stg.rows and 0 <= cc < stg.cols):
             return None
         ch = stg.grid[cr][cc]
         if ch in (".", " "):
@@ -180,11 +185,35 @@ def _fallback_step(stg: _FallbackStage, st: _FallbackState, act: _FallbackAction
         if ch in ("F", "!") and np == _FallbackPose.STANDING:
             return None
 
+    for cr, cc in cells:
+        sw = stg.switch_at.get((cr, cc))
+        if sw:
+            kind = sw.get("kind", "soft")
+            if kind == "heavy" and np != _FallbackPose.STANDING:
+                continue
+            mode = sw.get("mode", "toggle")
+            set_to = sw.get("set_to", "open")
+            for bid in sw.get("bridges", []):
+                if mode == "toggle":
+                    if bid in new_bridges:
+                        new_bridges.remove(bid)
+                    else:
+                        new_bridges.add(bid)
+                elif set_to == "open":
+                    new_bridges.add(bid)
+                elif set_to == "close":
+                    new_bridges.discard(bid)
+
     return _FallbackState(pos=(nr, nc), pose=np, bridges_open=frozenset(new_bridges))
 
 
+def _is_busy(view: SceneView) -> bool:
+    anim = getattr(view, "is_animating", False)
+    return anim() if callable(anim) else bool(anim)
+
+
 class DemoController(Entity):
-    """Giao diện điều khiển và hiển thị phong cách Minecraft hoàn chỉnh."""
+    """Giao diện điều khiển và hiển thị phong cách Minecraft hoàn chỉnh (Thuần Python Ursina 3D)."""
 
     def __init__(self, view: SceneView) -> None:
         super().__init__()
@@ -246,7 +275,7 @@ class DemoController(Entity):
         self.lbl_moves.text = f"STAGE: {self.stage.id} ({idx}/{total})   MOVES: {self.moves}"
 
     def next_stage(self) -> None:
-        if self.view.is_animating:
+        if _is_busy(self.view):
             return
         if self.stage_files:
             self.stage_index = (self.stage_index + 1) % len(self.stage_files)
@@ -255,7 +284,7 @@ class DemoController(Entity):
             self._update_hud()
 
     def prev_stage(self) -> None:
-        if self.view.is_animating:
+        if _is_busy(self.view):
             return
         if self.stage_files:
             self.stage_index = (self.stage_index - 1) % len(self.stage_files)
@@ -264,7 +293,7 @@ class DemoController(Entity):
             self._update_hud()
 
     def restart(self) -> None:
-        if self.view.is_animating:
+        if _is_busy(self.view):
             return
         self.state = self.initial_state
         self.history.clear()
@@ -275,7 +304,7 @@ class DemoController(Entity):
         self._update_hud()
 
     def undo(self) -> None:
-        if self.view.is_animating or not self.history or self.is_won:
+        if _is_busy(self.view) or not self.history or self.is_won:
             return
         self.state = self.history.pop()
         self.moves = max(0, self.moves - 1)
@@ -308,7 +337,7 @@ class DemoController(Entity):
             self.prev_stage()
             return
 
-        if self.view.is_animating or self.is_won:
+        if _is_busy(self.view) or self.is_won:
             return
 
         action = self._map_action(key)
@@ -336,7 +365,7 @@ class DemoController(Entity):
         r, c = next_state.pos
         pose_val = getattr(next_state.pose, "value", next_state.pose)
         pose_name = getattr(next_state.pose, "name", "")
-        if (pose_val == 0 or pose_name == "STANDING") and self.stage.grid[r][c] == "G":
+        if (pose_val == 0 or pose_name == "STANDING") and (self.stage.grid[r][c] == "G" or (r, c) == self.stage.goal):
             self.is_won = True
             invoke(lambda: self.view.on_win(next_state), delay=0.18)
             invoke(lambda: setattr(self.win_banner, "enabled", True), delay=0.55)

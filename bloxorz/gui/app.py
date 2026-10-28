@@ -71,50 +71,77 @@ def make_scene(fallback: Callable[[], Scene] = TextBoardScene) -> Scene:
     return view.SceneView()
 
 
-def run(controller: GameController) -> None:
-    try:
-        from ursina import Entity, Ursina, application, color, time, window
-    except ImportError:
-        raise SystemExit("Chưa cài Ursina: chạy `pip install -r requirements.txt`, hoặc chơi trong terminal bằng `python main.py --text`")
-    from bloxorz.gui.solver_runner import SolverSession
-    from bloxorz.gui.ui import Hud, SolverPanel
-
-    app = Ursina(title="Bloxorz Solver", development_mode=False, fullscreen=False, borderless=False)
-    window.color = color.rgb32(24, 26, 32)
-
+def run(controller: GameController, engine: str = "webgl") -> None:
     scene = make_scene()
-    hud = Hud()
-    panel = SolverPanel()
-    session = SolverSession(controller, scene)
-    scene.load_stage(controller.stage, controller.state)
 
-    def refresh() -> None:
-        hud.update(controller)
-        panel.update(session)
+    # 1. BẢN CHÍNH: Micro-Renderer WebGL Three.js Desktop Native (Tầng 1)
+    if engine == "webgl" and hasattr(scene, "run_webgl"):
+        try:
+            if hasattr(scene, "bind_controller"):
+                scene.bind_controller(controller)
+            scene.run_webgl(title=f"Bloxorz: Voxel Edition (WebGL 3D) - {controller.stage.id}")
+            return
+        except Exception as exc:
+            print(f"[Cảnh báo] WebGL 3D không khả dụng ({exc}). Đang tự động chuyển sang Fallback Native OpenGL 3.3 Core (v2)...")
 
-    refresh()
-    keys = KeyBuffer(controller, scene)
+    # 2. BẢN DỰ PHÒNG THAY CHO URSINA: Native OpenGL 3.3 Core Profile (v2)
+    if engine not in ("text", "ursina") and (hasattr(scene, "run_opengl") or hasattr(scene, "run_native_window")):
+        try:
+            if hasattr(scene, "bind_controller"):
+                scene.bind_controller(controller)
+            run_fn = getattr(scene, "run_opengl", None) or getattr(scene, "run_native_window", None)
+            run_fn(title=f"Bloxorz: Voxel Edition (OpenGL 3.3) - {controller.stage.id}")
+            return
+        except Exception as exc:
+            print(f"[Cảnh báo] Native OpenGL 3.3 không khả dụng ({exc}). Đang chuyển sang chế độ dự phòng tiếp theo...")
 
-    class KeyInput(Entity):
-        def input(self, key: str) -> None:
-            if key == "escape":
-                session.runner.cancel()
-                application.quit()
-            elif session.handle_key(key):
-                # Phím của panel (hoặc phím chơi tay bị chặn khi replay): bỏ phím chơi tay đang chờ
-                keys.pending = None
-                refresh()
-            elif keys.press(key) is not None:
-                refresh()
+    # 3. Tuỳ chọn kế thừa nếu người dùng truyền rõ --ursina
+    if engine == "ursina":
+        try:
+            from ursina import Entity, Ursina, application, color, time, window
+            from bloxorz.gui.solver_runner import SolverSession
+            from bloxorz.gui.ui import Hud, SolverPanel
 
-        def update(self) -> None:
-            changed = session.update(time.dt)
-            # Chạy phím đã giữ lại trong lúc scene diễn hoạt
-            if not session.replaying and keys.flush() is not None:
-                changed = True
-            # Khi đang giải, vẽ lại mỗi frame để đồng hồ chạy
-            if changed or session.solving:
-                refresh()
+            app = Ursina(title="Bloxorz Solver (Ursina Legacy)", development_mode=False, fullscreen=False, borderless=False)
+            window.color = color.rgb32(24, 26, 32)
 
-    KeyInput()
-    app.run()
+            u_scene = make_scene()
+            hud = Hud()
+            panel = SolverPanel()
+            session = SolverSession(controller, u_scene)
+            u_scene.load_stage(controller.stage, controller.state)
+
+            def refresh() -> None:
+                hud.update(controller)
+                panel.update(session)
+
+            refresh()
+            keys = KeyBuffer(controller, u_scene)
+
+            class KeyInput(Entity):
+                def input(self, key: str) -> None:
+                    if key == "escape":
+                        session.runner.cancel()
+                        application.quit()
+                    elif session.handle_key(key):
+                        keys.pending = None
+                        refresh()
+                    elif keys.press(key) is not None:
+                        refresh()
+
+                def update(self) -> None:
+                    changed = session.update(time.dt)
+                    if not session.replaying and keys.flush() is not None:
+                        changed = True
+                    if changed or session.solving:
+                        refresh()
+
+            KeyInput()
+            app.run()
+            return
+        except Exception as exc:
+            print(f"[Cảnh báo] Ursina không thể khởi chạy ({exc}). Đang chuyển sang chế độ text terminal...")
+
+    # 4. BẢN DỰ PHÒNG CUỐI CÙNG: Terminal text mode (không phụ thuộc bất kỳ thư viện GUI nào)
+    from bloxorz.gui.fake_scene import run_text
+    run_text(controller)

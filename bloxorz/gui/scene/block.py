@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import List, Tuple
 from ursina import Entity, Vec3
+
 try:
     from bloxorz.gui.scene.theme import VoxelTextures
     from bloxorz.gui.scene.board import grid_to_world
@@ -28,7 +29,7 @@ class OakVoxelUnit(Entity):
 class BlockMesh(Entity):
     """
     Quản lý 2 khối lập phương tạo thành khối Bloxorz 1x1x2.
-    Đảm bảo định vị chính xác tuyệt đối ở cả 3 tư thế (STANDING, HORIZONTAL, VERTICAL).
+    Đảm bảo định vị chính xác tuyệt đối ở cả 3 tư thế (STANDING, HORIZONTAL, VERTICAL) và khi tách (SPLIT).
     """
 
     def __init__(self) -> None:
@@ -37,23 +38,20 @@ class BlockMesh(Entity):
         self.unit_b = OakVoxelUnit(parent=self)
 
     @property
-    def cube1(self):
+    def cube1(self) -> OakVoxelUnit:
         return self.unit_a
 
     @cube1.setter
-    def cube1(self, val):
-        self.unit_a = val
+    def cube1(self, value: OakVoxelUnit) -> None:
+        self.unit_a = value
 
     @property
-    def cube2(self):
+    def cube2(self) -> OakVoxelUnit:
         return self.unit_b
 
     @cube2.setter
-    def cube2(self, val):
-        self.unit_b = val
-
-    def update_from_state(self, state) -> None:
-        self.sync_from_state(state)
+    def cube2(self, value: OakVoxelUnit) -> None:
+        self.unit_b = value
 
     @staticmethod
     def get_occupied_cells(state) -> List[Tuple[int, int]]:
@@ -108,6 +106,8 @@ class BlockMesh(Entity):
             self.unit_a.rotation = Vec3(90, 0, 0)
             self.unit_b.position = grid_to_world(r + 1, c, y=0.5)
             self.unit_b.rotation = Vec3(90, 0, 0)
+
+    update_from_state = sync_from_state
 
     def get_center_world_pos(self, state) -> Vec3:
         cells = self.get_occupied_cells(state)

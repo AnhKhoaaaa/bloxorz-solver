@@ -26,6 +26,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--stages-dir", type=Path, default=DEFAULT_STAGES_DIR, help="thư mục chứa file màn *.json")
     ap.add_argument("--stage", help="id màn (vd. stage_05) trong --stages-dir, hoặc đường dẫn tới 1 file .json")
     ap.add_argument("--text", action="store_true", help="chơi trong terminal thay vì mở cửa sổ 3D")
+    ap.add_argument("--opengl", action="store_true", help="chạy trực tiếp bằng Fallback Native OpenGL 3.3 Core (v2)")
+    ap.add_argument("--ursina", action="store_true", help="dùng giao diện Ursina cũ")
     return ap.parse_args(argv)
 
 
@@ -53,7 +55,13 @@ def main(argv: list[str] | None = None) -> None:
         run_text(controller)
         return
     from bloxorz.gui.app import run
-    run(controller)
+    if args.opengl:
+        engine = "opengl"
+    elif args.ursina:
+        engine = "ursina"
+    else:
+        engine = "webgl"
+    run(controller, engine=engine)
 
 
 if __name__ == "__main__":

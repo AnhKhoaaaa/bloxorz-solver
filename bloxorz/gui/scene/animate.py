@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 from typing import Callable, Optional
 from ursina import Entity, Vec3, curve, invoke, destroy, color
+
 try:
     from bloxorz.gui.scene.theme import ANIM_ROLL_DURATION, SoundManager
     from bloxorz.gui.scene.block import BlockMesh
@@ -12,7 +13,8 @@ except ImportError:
 
 
 def _action_name(action) -> str:
-    name = getattr(action, "name", str(action)).upper()
+    direction = getattr(action, "direction", action)
+    name = getattr(direction, "name", str(direction)).upper()
     for d in ("LEFT", "RIGHT", "UP", "DOWN"):
         if d in name:
             return d
@@ -53,15 +55,19 @@ def animate_roll(
     on_complete: Optional[Callable[[], None]] = None,
 ) -> None:
     """Lăn khối mượt mà qua cạnh đáy, phát âm thanh bước chân và hiệu ứng nảy nhẹ."""
-    # Hỗ trợ gọi lăn 1 khối phân tách hoặc mock test: animate_roll(entity, target_pos, on_complete)
-    if action is None or not hasattr(old_state, "pos"):
-        callback = on_complete or (action if callable(action) else None)
-        target = old_state
-        if hasattr(block, "animate_position") and isinstance(target, (tuple, list, Vec3)):
-            block.animate_position(target, duration=ANIM_ROLL_DURATION, curve=curve.out_quad)
-        if callback:
-            invoke(callback, delay=ANIM_ROLL_DURATION)
+    # Trường hợp gọi 2 tham số cho 1 khối con khi đang tách: animate_roll(moving_cube, target_pos, on_complete=...)
+    if action is None and new_state is None:
+        target_pos = old_state
+        if hasattr(block, "animate_position"):
+            tx, ty, tz = target_pos
+            block.animate_position(Vec3(tx, ty, tz), duration=ANIM_ROLL_DURATION, curve=curve.out_quad)
+            SoundManager.play("step")
+            if on_complete:
+                invoke(on_complete, delay=ANIM_ROLL_DURATION)
+        elif on_complete:
+            on_complete()
         return
+
     direction = _action_name(action)
 
     if old_state.pose is None or new_state.pose is None:
