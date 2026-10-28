@@ -121,6 +121,7 @@ def test_cli_bad_input_does_not_create_partial_report(tmp_path):
     assert not out.exists()
 
 
+@pytest.mark.filterwarnings("error::FutureWarning")
 def test_all_failed_group_has_no_fake_zero_statistics(tmp_path):
     data = plots.load_results(write_csv(tmp_path, [
         row(status="timeout", verified="", peak_mem_kb=""),

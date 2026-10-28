@@ -86,7 +86,7 @@ def load_results(path: str | Path) -> pd.DataFrame:
     if not verification.isin(("true", "false", "")).all():
         raise ValueError("verified must be True, False or blank")
     for name in NUMERIC:
-        text = data[name].replace("", np.nan) if name == "peak_mem_kb" else data[name]
+        text = data[name].mask(data[name].eq(""), np.nan) if name == "peak_mem_kb" else data[name]
         values = pd.to_numeric(text, errors="raise")
         valid = values.dropna() if name == "peak_mem_kb" else values
         if not np.isfinite(valid).all() or (valid < 0).any():
