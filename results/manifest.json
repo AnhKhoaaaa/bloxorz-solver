@@ -1,23 +1,23 @@
 {
-  "label": "LOCAL SAMPLE - 2026-10-28 (not Task 1.7)",
+  "label": "Task 1.7 - official measurements",
   "input": {
-    "path": "results/sample/bench.csv",
-    "sha256": "01fc1357563ae910c7df356e2554e961a37acc659e5663528aa6b5ab390ebd25",
+    "path": "results/final/results.csv",
+    "sha256": "a477cebb991dc2155395dba7bf737f4fd7e14291c48d643389c9cd334eeb9cf8",
     "rows": 85,
     "stages": 17,
-    "commit": "acc01c6",
-    "python": "3.12.10",
-    "machine": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+    "commit": "7f77404",
+    "python": "3.13.6",
+    "machine": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel"
   },
   "hash_normalization": "file bytes with CRLF normalized to LF before SHA-256",
   "original": {
-    "path": "results/sample/original.csv",
-    "sha256": "d2cf2008bdd62adab28f8a4278f05b2337f13b0f79b3471c34aca1dcd7026b52",
+    "path": "results/final/original.csv",
+    "sha256": "e9db7504adf2962ebaaf83cec28e518724b43fcdf3bf0517acdef7c334745ed2",
     "rows": 165,
     "stages": 33,
-    "commit": "acc01c6",
-    "python": "3.12.10",
-    "machine": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+    "commit": "3a4ee61",
+    "python": "3.13.6",
+    "machine": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel"
   },
   "figures": [
     "expanded.png",
