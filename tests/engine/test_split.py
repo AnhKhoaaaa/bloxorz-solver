@@ -179,6 +179,22 @@ def test_split_block_targets_adjacent_merges_immediately():
     assert res.cube2 is None
 
 
+def test_split_block_rejects_non_standing_or_non_split_switch():
+    """Gọi trực tiếp split_block với tư thế không phải STANDING hoặc công tắc không phải split -> trả về None."""
+    sw_split = Switch(id="s_split", kind="split", pos=(0, 0), targets=((2, 0), (2, 2)))
+    sw_soft = Switch(id="s_soft", kind="soft", pos=(0, 0), mode="toggle", bridges=("b1",))
+    stage = Stage(
+        id="st_precond",
+        group="G3",
+        grid=("###", "...", "##G"),
+        start=(0, 0),
+        goal=(2, 2),
+    )
+    assert split_block(stage, State(Pose.HORIZONTAL, (0, 0)), sw_split) is None
+    assert split_block(stage, State(Pose.STANDING, (0, 0)), sw_soft) is None
+    assert split_block(stage, State(Pose.STANDING, (0, 1)), sw_split) is None
+
+
 # ==============================================================================
 # 3. Kiểm tra điều khiển từng cube đơn lẻ (step_split)
 # ==============================================================================
@@ -371,11 +387,8 @@ def test_step_split_merge_vertical(flat_stage):
     assert merged.cube2 is None
 
 
-def test_step_split_merged_block_falls_if_on_goal(flat_stage):
-    """Nếu 2 cube ghép lại thành khối nằm mà đè qua ô Goal 'G' thì bị rơi (thua)."""
-    # Goal tại (2, 5).
-    # Cube 0 tại (2, 3), Cube 1 tại (2, 5) [chú ý cube 1 không thể ở Goal, nên test kề dọc]
-    # Đặt Goal tại (1, 2).
+def test_step_split_single_cube_falls_if_moving_into_goal(flat_stage):
+    """Cube đơn 1x1x1 di chuyển vào ô đích 'G' (lỗ 1x1) sẽ bị lọt xuống ngay lập tức trước khi kịp ghép."""
     grid = (
         "###",
         "#G#",
@@ -386,6 +399,9 @@ def test_step_split_merged_block_falls_if_on_goal(flat_stage):
     s = State(pose=None, pos=(0, 1), cube2=(2, 1))
     # Cube 0 đi DOWN -> (1, 1) [ô Goal]. Nhưng cube đơn không được đi vào Goal -> rơi ngay!
     assert step(s, Action(Direction.DOWN, cube=0), st) is None
+    # Ngược lại, nếu một State không hợp lệ có sẵn 1 cube trên ô 'G' (1, 1), cube kia tiến tới kề cũng bị từ chối
+    s_invalid = State(pose=None, pos=(0, 0), cube2=(1, 1))
+    assert step(s_invalid, Action(Direction.RIGHT, cube=0), st) is None
 
 
 # ==============================================================================
