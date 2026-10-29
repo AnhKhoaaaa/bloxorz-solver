@@ -274,42 +274,50 @@ def start_slow_solve(algorithm="bfs"):
         return run(name, stage)
 
     router.run_fn = slow
-    worker = threading.Thread(target=scene.bridge.handle_client_event, args=("solve_ai", {"algorithm": algorithm}))
+    replies = []  # phản hồi của request giải cũ: chính nó mang lệnh vẽ (handle_client_event tự lấy hết hàng đợi)
+    worker = threading.Thread(target=lambda: replies.append(
+        scene.bridge.handle_client_event("solve_ai", {"algorithm": algorithm})))
     worker.start()
     assert started.wait(5)
-    return scene, controller, release, worker
+    return scene, controller, release, worker, replies
+
+
+def commands_of(reply):
+    return [c["type"] for c in reply["commands"]]
 
 
 def test_stage_change_during_solve_drops_old_result(capsys):
     # Bridge xử lý mỗi request trên 1 luồng: đổi màn khi solver của màn cũ chưa xong
-    scene, controller, release, worker = start_slow_solve()
+    scene, controller, release, worker, replies = start_slow_solve()
     scene.bridge.handle_client_event("next_stage", {})
     release.set()
     worker.join(5)
     assert controller.stage.id == "fixture_fragile"
     assert controller.status == "playing" and controller.moves == 0  # lời giải của basic không được đi trên fragile
-    assert all(c["type"] != "play_solution" for c in scene.bridge.drain_commands())
+    assert commands_of(replies[0]) == []  # request giải cũ không gửi lệnh vẽ nào
     assert "Bỏ kết quả bfs của màn fixture_basic" in capsys.readouterr().out
 
 
 def test_newer_solve_replaces_older_one():
-    scene, controller, release, worker = start_slow_solve("bfs")
+    scene, controller, release, worker, replies = start_slow_solve("bfs")
     reply = scene.bridge.handle_client_event("solve_ai", {"algorithm": "astar"})  # lượt mới chạy xong trước
     played = [c for c in reply["commands"] if c["type"] == "play_solution"]
     assert played[-1]["payload"]["solver"]["algorithm"] == "A*"
+    moves_after_astar = controller.moves
     release.set()
     worker.join(5)
-    assert all(c["type"] != "play_solution" for c in scene.bridge.drain_commands())  # lượt bfs cũ bị bỏ
-    assert controller.status == "won"
+    assert commands_of(replies[0]) == []  # lượt bfs cũ bị bỏ: không load_stage, không play_solution
+    assert controller.status == "won" and controller.moves == moves_after_astar  # controller không bị đi lại
 
 
 def test_restart_during_solve_keeps_result():
     # cùng màn: lời giải vẫn hợp lệ vì luôn phát lại từ đầu màn
-    scene, controller, release, worker = start_slow_solve()
+    scene, controller, release, worker, replies = start_slow_solve()
     scene.bridge.handle_client_event("restart", {})
     release.set()
     worker.join(5)
     assert controller.status == "won" and controller.stage.id == "fixture_basic"
+    assert commands_of(replies[0]) == ["load_stage", "play_solution"]
 
 
 def test_index_locks_requests_while_solving():
