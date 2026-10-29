@@ -1,7 +1,7 @@
 """SceneView Single-Engine Implementation: Primary WebGL Three.js Micro-Renderer."""
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional
 
 from bloxorz.gui.scene.audio import ProceduralAudioEngine
 from bloxorz.gui.scene.bridge import RendererBridge, action_to_name
@@ -207,70 +207,11 @@ class SceneView:
     # ==========================================================================
 
     def bind_controller(self, controller: Any) -> None:
-        """Connect GameController instance to WebGL event loop."""
+        """
+        Gắn GameController để load_stage/on_move đọc số màn và số bước.
+        Xử lý sự kiện người chơi từ WebGL do VT4 đảm nhận (app.WebEventRouter, gắn vào bridge trong app.connect_events).
+        """
         self.controller = controller
-        from bloxorz.model import Direction
-
-        dir_map = {
-            "UP": Direction.UP,
-            "DOWN": Direction.DOWN,
-            "LEFT": Direction.LEFT,
-            "RIGHT": Direction.RIGHT,
-        }
-
-        def _handle_webgl_event(event_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-            if not self.controller:
-                return {"ok": True}
-
-            if event_type == "ready":
-                self.load_stage(self.controller.stage, self.controller.state)
-
-            elif event_type == "action":
-                act_str = str(payload.get("action", "")).upper()
-                d = dir_map.get(act_str)
-                if d is not None:
-                    old_st = self.controller.state
-                    outcome = self.controller.move(d)
-                    if outcome == "fell":
-                        self.on_fall(old_st, d)
-                    elif outcome in ("moved", "won"):
-                        self.on_move(old_st, d, self.controller.state)
-                        if outcome == "won":
-                            self.on_win(self.controller.state)
-
-            elif event_type == "undo":
-                if self.controller.undo():
-                    self.load_stage(self.controller.stage, self.controller.state)
-
-            elif event_type == "restart":
-                self.controller.restart()
-                self.load_stage(self.controller.stage, self.controller.state)
-
-            elif event_type == "next_stage":
-                next_idx = (self.controller.index + 1) % len(self.controller.stages)
-                self.controller.load(next_idx)
-                self.load_stage(self.controller.stage, self.controller.state)
-
-            elif event_type == "prev_stage":
-                prev_idx = (self.controller.index - 1) % len(self.controller.stages)
-                self.controller.load(prev_idx)
-                self.load_stage(self.controller.stage, self.controller.state)
-
-            elif event_type == "solve_ai":
-                algo = str(payload.get("algorithm", "astar")).lower()
-                try:
-                    from bloxorz.search import run
-                    res = run(algo, self.controller.stage)
-                    if res.status == "solved" and res.actions:
-                        self.play_solution(res.actions, delay=0.20)
-                except Exception as err:
-                    print(f"[AI Solver Error]: {err}")
-
-            return {"ok": True}
-
-        bridge = getattr(self, "bridge", None)
-        if bridge is not None:
-            bridge.set_event_handler(_handle_webgl_event)
 
     def run_webgl(
         self,

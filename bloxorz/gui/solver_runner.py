@@ -8,6 +8,8 @@ Tiến trình chạy solver ngầm và replay lời giải.
 - Replayer: phát lại lời giải từ đầu màn, từng bước qua GameController + Scene; chỉ đi bước tiếp
   khi scene hết diễn hoạt và đã chờ đủ step_delay giây.
 - SolverSession: trạng thái panel solver trong app (chọn thuật toán, giải, hủy, replay) và chữ hiển thị.
+- solver_info() / solution_steps(): dữ liệu cho cảnh WebGL khi bấm nút giải AI (huy hiệu kết quả và các bước
+  lời giải để WebGL phát lại), app.WebEventRouter gửi đi qua lệnh play_solution.
 
 Module này KHÔNG import Ursina (giống controller.py) để test được không cần đồ họa;
 app.py gọi SolverSession.handle_key() khi có phím và SolverSession.update(dt) mỗi frame.
@@ -17,7 +19,7 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Callable, Sequence
+from typing import Any, Callable, Sequence
 
 from bloxorz import search
 from bloxorz.gui.controller import GameController
@@ -28,6 +30,7 @@ from bloxorz.stage import Stage
 
 DEFAULT_TIMEOUT_S = 60.0
 REPLAY_STEP_DELAY_S = 0.25
+WEB_STEP_DELAY_S = 0.20  # khoảng nghỉ giữa 2 bước khi cảnh WebGL phát lời giải
 
 PREFERRED_ORDER = ("bfs", "dfs", "ucs", "astar", "astar_manhattan")
 DISPLAY_NAMES = {
@@ -59,6 +62,38 @@ def algorithm_names() -> list[str]:
 
 def display_name(algorithm: str) -> str:
     return DISPLAY_NAMES.get(algorithm, algorithm)
+
+
+def solver_info(result: SearchResult) -> dict[str, Any]:
+    """Thông tin kết quả solver cho huy hiệu trên giao diện WebGL."""
+    return {
+        "algorithm": display_name(result.algorithm),
+        "status": result.status,
+        "status_text": STATUS_TEXT.get(result.status, result.status),
+        "moves": result.length,
+        "cost": round(result.cost, 2),
+        "execution_time_ms": round(result.time_s * 1000, 1),
+        "nodes_expanded": result.expanded,
+    }
+
+
+def solution_steps(controller: GameController, actions: Sequence[Action],
+                   serialize_move: Callable[..., dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Cho controller đi theo lời giải từ trạng thái hiện tại (đúng cube khi tách) để Python luôn khớp màn hình,
+    và trả các bước cho WebGL phát lại: serialize_move(old, action, new, moves) kèm is_win.
+    Dừng ở bước không hợp lệ với luật chơi.
+    """
+    steps = []
+    for action in actions:
+        old = controller.state
+        outcome = controller.play(action)
+        if outcome not in ("moved", "won"):
+            break
+        step = serialize_move(old, action, controller.state, controller.moves)
+        step["is_win"] = outcome == "won"
+        steps.append(step)
+    return steps
 
 
 class _Job:
