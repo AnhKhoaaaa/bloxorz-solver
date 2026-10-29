@@ -15,6 +15,7 @@ import json
 import re
 import shutil
 import subprocess
+import threading
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -288,6 +289,70 @@ def test_solve_ai_unknown_algorithm_reports_error():
     assert commands[0]["payload"]["solver"]["status"] == "error"
 
 
+def start_slow_solve(algorithm="bfs"):
+    """Màn basic rồi fragile; solver của lượt đầu dừng chờ tới khi release được set (giả lập solver chạy lâu)."""
+    from bloxorz.search import run
+
+    scene = make_scene_view()
+    controller = GameController([load_stage(FIXTURES / "basic.json"), load_stage(FIXTURES / "fragile.json")])
+    scene.bind_controller(controller)
+    router = connect_events(scene, controller)
+    started, release, calls = threading.Event(), threading.Event(), []
+
+    def slow(name, stage):
+        calls.append(stage.id)
+        if len(calls) == 1:
+            started.set()
+            release.wait(5)
+        return run(name, stage)
+
+    router.run_fn = slow
+    worker = threading.Thread(target=scene.bridge.handle_client_event, args=("solve_ai", {"algorithm": algorithm}))
+    worker.start()
+    assert started.wait(5)
+    return scene, controller, release, worker
+
+
+def test_stage_change_during_solve_drops_old_result(capsys):
+    # Bridge xử lý mỗi request trên 1 luồng: đổi màn khi solver của màn cũ chưa xong
+    scene, controller, release, worker = start_slow_solve()
+    scene.bridge.handle_client_event("next_stage", {})
+    release.set()
+    worker.join(5)
+    assert controller.stage.id == "fixture_fragile"
+    assert controller.status == "playing" and controller.moves == 0  # lời giải của basic không được đi trên fragile
+    assert all(c["type"] != "play_solution" for c in scene.bridge.drain_commands())
+    assert "Bỏ kết quả bfs của màn fixture_basic" in capsys.readouterr().out
+
+
+def test_newer_solve_replaces_older_one():
+    scene, controller, release, worker = start_slow_solve("bfs")
+    reply = scene.bridge.handle_client_event("solve_ai", {"algorithm": "astar"})  # lượt mới chạy xong trước
+    played = [c for c in reply["commands"] if c["type"] == "play_solution"]
+    assert played[-1]["payload"]["solver"]["algorithm"] == "A*"
+    release.set()
+    worker.join(5)
+    assert all(c["type"] != "play_solution" for c in scene.bridge.drain_commands())  # lượt bfs cũ bị bỏ
+    assert controller.status == "won"
+
+
+def test_restart_during_solve_keeps_result():
+    # cùng màn: lời giải vẫn hợp lệ vì luôn phát lại từ đầu màn
+    scene, controller, release, worker = start_slow_solve()
+    scene.bridge.handle_client_event("restart", {})
+    release.set()
+    worker.join(5)
+    assert controller.status == "won" and controller.stage.id == "fixture_basic"
+
+
+def test_index_locks_requests_while_solving():
+    html = INDEX.read_text(encoding="utf-8")
+    assert "this.isSolving = true;" in html and "this.isSolving = false;" in html
+    for method in ("requestAction", "requestUndo", "requestRestart", "requestNextStage", "requestPrevStage"):
+        body = html.split(f"    {method}(", 1)[1].split("}", 1)[0]
+        assert "this.isSolving" in body, method
+
+
 # ---------- giao diện 2D trên WebGL (bloxorz/gui/web/) ----------
 UI_IDS = ("ui-stage-name", "ui-stage", "ui-moves", "ui-cube", "ui-ai-badge", "btn-overworld", "btn-nether", "btn-end", "banner-msg")
 
@@ -370,6 +435,7 @@ H.afterWin(client);
 const keys = {};
 for (const k of ["ArrowLeft", "a", "D", "w", "s", "u", "r", "n", "p", " ", "G", "x"]) keys[k] = key(k);
 client.isAutoPlaying = true; keys.blocked = key("w"); client.isAutoPlaying = false;
+client.isSolving = true; keys.blocked3 = key("n"); client.isSolving = false;
 client.isProcessing = true; keys.blocked2 = key("u");
 
 console.log(JSON.stringify({
@@ -388,7 +454,8 @@ def hud_run(tmp_path_factory):
         pytest.skip("cần Node.js để chạy thử hud.js")
     harness = tmp_path_factory.mktemp("hud") / "harness.js"
     harness.write_text(NODE_HARNESS, encoding="utf-8")
-    out = subprocess.run([node, str(harness), str(WEB / "hud.js")], capture_output=True, text=True, check=True)
+    out = subprocess.run([node, str(harness), str(WEB / "hud.js")], capture_output=True, text=True,
+                         encoding="utf-8", check=True)  # Node in tiếng Việt UTF-8; Windows mặc định đọc CP1252
     return json.loads(out.stdout)
 
 
@@ -419,6 +486,10 @@ def test_index_renders_split_cubes_and_selection():
     assert "this.splitMeshes" in html and "_movingCube(oldState, newState)" in html  # 2 cube riêng, chỉ cube đi mới lăn
     assert "BloxorzHud.setSelected(" in html
     assert "this.splitMeshes[this.selected].getWorldPosition" in html  # kim cương tím (VT3) đặt theo cube Python chọn
+    # đầu mỗi bước lăn khi tách: kim cương chuyển ngay lên cube đang lăn (action_cube của trạng thái cũ), không đợi lăn xong
+    roll = html.split("    onMove(payload, onComplete) {", 1)[1].split("const rotAxis", 1)[0]
+    assert "payload.action_cube" in roll and "this.selected = moving;" in roll
+    assert roll.index("this.selected = moving;") < roll.index("this.applyStateTransform(oldState);")
     standalone = (ROOT / "standalone_browser.html").read_text(encoding="utf-8")
     assert standalone == html.replace('href="web/hud.css"', 'href="bloxorz/gui/web/hud.css"').replace(
         'src="web/hud.js"', 'src="bloxorz/gui/web/hud.js"')
@@ -429,6 +500,7 @@ def test_gameplay_keys(hud_run):
     assert all(keys[k] == [True, True] for k in ("ArrowLeft", "a", "D", "w", "s", "u", "r", "n", "p", " ", "G"))
     assert keys["x"] == [False, False]  # phím khác (camera/biome) để cảnh 3D xử lý
     assert keys["blocked"] == [False, False] and keys["blocked2"] == [False, False]  # đang diễn hoạt / phát lời giải
+    assert keys["blocked3"] == [False, False]  # đang chờ solver: không đổi màn được
     assert hud_run["calls"] == [
         "requestNextStage",  # afterWin: thắng xong tự sang màn sau
         "requestAction:LEFT", "requestAction:LEFT", "requestAction:RIGHT", "requestAction:UP", "requestAction:DOWN",

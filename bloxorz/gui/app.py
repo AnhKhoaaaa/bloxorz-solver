@@ -14,6 +14,8 @@ Cửa sổ chính và điều phối giao diện ứng dụng.
   - "solve_ai"   : giải màn hiện tại bằng thuật toán payload["algorithm"] (mặc định A*). Có lời giải thì đưa ván
     về đầu màn, đi từng bước qua controller rồi gửi play_solution {"steps", "delay", "solver"} cho WebGL phát
     lại; không có lời giải thì chỉ gửi "solver" để giao diện báo lý do (không giải được / quá thời gian / lỗi).
+    Bridge xử lý mỗi request trên 1 luồng, nên solver chạy ngoài khóa; trong lúc chờ, sự kiện khác vẫn được xử lý
+    (có khóa). Kết quả chỉ được dùng nếu vẫn ở đúng màn đã giải và không có lượt giải mới hơn; ngược lại bị bỏ.
   Mọi sự kiện trả {"ok": True}; bridge tự gửi kèm các lệnh vẽ mà scene vừa đẩy.
 Zero OpenGL & Zero Ursina bloat.
 """
@@ -22,6 +24,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+import threading
 import traceback
 from typing import Any, Callable
 
@@ -86,12 +89,22 @@ class WebEventRouter:
         self.controller = controller
         self.scene = scene
         self.run_fn = run_fn
+        self._lock = threading.Lock()  # sự kiện đến từ nhiều luồng HTTP: đổi ván chơi lần lượt từng sự kiện
+        self._stage_version = 0        # tăng khi đổi màn: kết quả solver của màn cũ hết hiệu lực
+        self._solve_id = 0             # tăng mỗi lượt giải: chỉ lượt mới nhất được phát
 
     def handle(self, event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
-        controller, scene = self.controller, self.scene
-        if not controller:
+        if not self.controller:
             return {"ok": True}
+        if event_type == "solve_ai":
+            self._solve(str(payload.get("algorithm", DEFAULT_ALGORITHM)).lower())
+        else:
+            with self._lock:
+                self._handle_locked(event_type, payload)
+        return {"ok": True}
 
+    def _handle_locked(self, event_type: str, payload: dict[str, Any]) -> None:
+        controller, scene = self.controller, self.scene
         result: str | None = None  # việc vừa làm, để báo scene cube đang chọn
         if event_type == "ready":
             scene.load_stage(controller.stage, controller.state)
@@ -125,25 +138,34 @@ class WebEventRouter:
 
         elif event_type == "next_stage":
             controller.load((controller.index + 1) % len(controller.stages))
+            self._stage_version += 1
             scene.load_stage(controller.stage, controller.state)
             result = "next"
 
         elif event_type == "prev_stage":
             controller.load((controller.index - 1) % len(controller.stages))
+            self._stage_version += 1
             scene.load_stage(controller.stage, controller.state)
             result = "prev"
 
-        elif event_type == "solve_ai":
-            algorithm = str(payload.get("algorithm", DEFAULT_ALGORITHM)).lower()
-            try:
-                solution = self.run_fn(algorithm, controller.stage)
-            except Exception as err:
-                print(f"[AI Solver Error]: {err}")
-            else:
-                self._play_solution(solution)
-
         notify_selected(controller, scene, result)
-        return {"ok": True}
+
+    def _solve(self, algorithm: str) -> None:
+        """Chạy solver ngoài khóa rồi phát lời giải, trừ khi màn đã đổi hoặc đã có lượt giải mới hơn."""
+        with self._lock:
+            self._solve_id += 1
+            ticket = (self._solve_id, self._stage_version)
+            stage = self.controller.stage
+        try:
+            result = self.run_fn(algorithm, stage)
+        except Exception as err:
+            print(f"[AI Solver Error]: {err}")
+            return
+        with self._lock:
+            if ticket != (self._solve_id, self._stage_version) or self.controller.stage is not stage:
+                print(f"[AI Solver] Bỏ kết quả {algorithm} của màn {stage.id}: đã đổi màn hoặc có lượt giải mới hơn.")
+                return
+            self._play_solution(result)
 
     def _play_solution(self, result: Any) -> None:
         """Gửi lời giải cho WebGL phát lại; controller đi theo cùng các bước để luôn khớp màn hình."""

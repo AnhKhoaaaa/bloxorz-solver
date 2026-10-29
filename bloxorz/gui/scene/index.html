@@ -1147,8 +1147,16 @@ class VoxelSceneRenderer {
         const newState = payload.new_state;
         const dir = payload.action;
 
+        // Khi tách: kim cương nằm trên cube đang lăn ngay từ đầu bước (cube theo chỉ số của trạng thái cũ);
+        // cuối bước selected của trạng thái mới (lệnh set_selected hoặc bước lời giải AI) xử lý việc đổi thứ tự cube.
+        let moving = 0;
+        if (this.isSplitState(oldState)) {
+            moving = (payload.action_cube === 0 || payload.action_cube === 1)
+                ? payload.action_cube : this._movingCube(oldState, newState);
+            this.selected = moving;
+        }
         this.applyStateTransform(oldState);
-        const target = this._rollTarget(oldState, this._movingCube(oldState, newState));
+        const target = this._rollTarget(oldState, moving);
         const rotAxis = this._setupRollPivot(oldState, dir, target);
         const targetAngle = Math.PI / 2;
 
@@ -1502,6 +1510,7 @@ class SceneProtocolClient {
         this.cmdQueue = [];
         this.isProcessing = false;
         this.isAutoPlaying = false;
+        this.isSolving = false; // đang chờ Python giải: khóa mọi thao tác để kết quả không rơi vào màn khác
 
         this._bindKeyboard();
         this._initBridgeConnection();
@@ -1671,39 +1680,44 @@ class SceneProtocolClient {
     }
 
     requestAction(actionName) {
-        if (this.isProcessing || this.isAutoPlaying) return;
+        if (this.isProcessing || this.isAutoPlaying || this.isSolving) return;
         this._sendEvent('action', { action: actionName });
     }
 
     requestUndo() {
-        if (this.isProcessing || this.isAutoPlaying) return;
+        if (this.isProcessing || this.isAutoPlaying || this.isSolving) return;
         this._sendEvent('undo');
     }
 
     requestRestart() {
-        if (this.isAutoPlaying) return;
+        if (this.isAutoPlaying || this.isSolving) return;
         this.cmdQueue = [];
         this.isProcessing = false;
         this._sendEvent('restart');
     }
 
     requestNextStage() {
-        if (this.isAutoPlaying) return;
+        if (this.isAutoPlaying || this.isSolving) return;
         this.cmdQueue = [];
         this.isProcessing = false;
         this._sendEvent('next_stage');
     }
 
     requestPrevStage() {
-        if (this.isAutoPlaying) return;
+        if (this.isAutoPlaying || this.isSolving) return;
         this.cmdQueue = [];
         this.isProcessing = false;
         this._sendEvent('prev_stage');
     }
 
-    requestAISolve(algorithm = 'astar') {
-        if (this.isProcessing || this.isAutoPlaying) return;
-        this._sendEvent('solve_ai', { algorithm });
+    async requestAISolve(algorithm = 'astar') {
+        if (this.isProcessing || this.isAutoPlaying || this.isSolving) return;
+        this.isSolving = true;
+        try {
+            await this._sendEvent('solve_ai', { algorithm });
+        } finally {
+            this.isSolving = false;
+        }
     }
 }
 
