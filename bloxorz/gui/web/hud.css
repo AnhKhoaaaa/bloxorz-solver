@@ -62,6 +62,15 @@
     align-items: center;
 }
 
+#ui-cube {
+    display: none;
+    font-size: 9px;
+    padding: 4px 8px;
+    background: #4d3b1f;
+    border: 2px solid #ffaa00;
+    color: #ffaa00;
+}
+
 #ui-ai-badge {
     display: none;
     font-size: 9px;

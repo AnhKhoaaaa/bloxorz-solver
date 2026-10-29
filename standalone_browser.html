@@ -529,6 +529,8 @@ class VoxelSceneRenderer {
         this.b1 = { r: 0, c: 0 };
         this.b2 = { r: 0, c: 0 };
         this.bridgesOpen = new Set();
+        this.isSplit = false;
+        this.selected = null; // cube đang điều khiển khi khối tách (0 = b1, 1 = b2)
 
         this.tileMeshes = {};
         this.bridgeMeshes = {};
@@ -755,6 +757,22 @@ class VoxelSceneRenderer {
 
         this.playerPivot.add(this.playerMesh);
         this.scene.add(this.playerPivot);
+
+        // 2 cube riêng khi khối tách: mỗi cube có pivot và vật liệu riêng để lăn và tô sáng độc lập
+        (this.splitPivots || []).forEach(p => this.scene.remove(p));
+        this.splitPivots = [];
+        this.splitMeshes = [];
+        for (let i = 0; i < 2; i++) {
+            const pivot = new THREE.Group();
+            const mesh = new THREE.Mesh(halfGeo, materials.map(m => m.clone()));
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            pivot.add(mesh);
+            pivot.visible = false;
+            this.scene.add(pivot);
+            this.splitPivots.push(pivot);
+            this.splitMeshes.push(mesh);
+        }
     }
 
     /**
@@ -896,6 +914,7 @@ class VoxelSceneRenderer {
         }
 
         this._createPlayerMesh();
+        this.selected = null; // Python báo lại set_selected nếu màn vẽ lại khi khối vẫn đang tách
         this.applyStateTransform(state, true);
 
         BloxorzHud.hideBanner();
@@ -915,6 +934,20 @@ class VoxelSceneRenderer {
 
         this.playerPivot.position.set(0, 0, 0);
         this.playerPivot.rotation.set(0, 0, 0);
+
+        this.isSplit = this.isSplitState(state);
+        this.playerPivot.visible = !this.isSplit;
+        (this.splitPivots || []).forEach((pivot, i) => {
+            pivot.visible = this.isSplit;
+            pivot.position.set(0, 0, 0);
+            pivot.rotation.set(0, 0, 0);
+            const cell = i === 0 ? this.b1 : this.b2;
+            this.splitMeshes[i].position.set(cell.c + this.offsetX, 0.5, cell.r + this.offsetZ);
+            this.splitMeshes[i].rotation.set(0, 0, 0);
+            this.splitMeshes[i].scale.set(1, 1, 1);
+        });
+        this._updateSelectedGlow(0);
+        BloxorzHud.setSelected(this.isSplit ? this.selected : null);
 
         const x1 = this.b1.c + this.offsetX;
         const z1 = this.b1.r + this.offsetZ;
@@ -946,11 +979,51 @@ class VoxelSceneRenderer {
         return state.b1.r === state.b2.r && state.b1.c === state.b2.c;
     }
 
-    _setupRollPivot(oldState, dir) {
-        const x1 = oldState.b1.c + this.offsetX;
-        const z1 = oldState.b1.r + this.offsetZ;
-        const x2 = oldState.b2.c + this.offsetX;
-        const z2 = oldState.b2.r + this.offsetZ;
+    isSplitState(state) {
+        return state.pose === 'SPLIT';
+    }
+
+    /** Tô sáng cube đang điều khiển khi khối tách (Python gọi qua lệnh set_selected). */
+    setSelected(cube) {
+        this.selected = (cube === 0 || cube === 1) ? cube : null;
+        this._updateSelectedGlow(0);
+        BloxorzHud.setSelected(this.isSplit ? this.selected : null);
+    }
+
+    _updateSelectedGlow(elapsed) {
+        (this.splitMeshes || []).forEach((mesh, i) => {
+            const on = this.isSplit && i === this.selected;
+            mesh.material.forEach(m => {
+                m.emissive.setHex(on ? 0x55ffff : 0x000000);
+                m.emissiveIntensity = on ? 0.35 + 0.2 * Math.sin(elapsed * 5) : 0;
+            });
+        });
+    }
+
+    /** Cube nào lăn khi khối đang tách: ô cũ không còn nằm trong state mới (kể cả khi gộp lại). */
+    _movingCube(oldState, newState) {
+        const cells = [newState.b1, newState.b2];
+        const has = (p) => cells.some(q => q.r === p.r && q.c === p.c);
+        if (!has(oldState.b1)) return 0;
+        if (!has(oldState.b2)) return 1;
+        return this.selected === null ? 0 : this.selected;
+    }
+
+    /** Pivot và mesh sẽ lăn: cả khối, hoặc 1 cube khi đang tách. */
+    _rollTarget(oldState, cube) {
+        if (!this.isSplitState(oldState)) {
+            return { pivot: this.playerPivot, mesh: this.playerMesh, cells: [oldState.b1, oldState.b2] };
+        }
+        return { pivot: this.splitPivots[cube], mesh: this.splitMeshes[cube], cells: [cube === 0 ? oldState.b1 : oldState.b2] };
+    }
+
+    _setupRollPivot(oldState, dir, target = null) {
+        const { pivot, mesh, cells } = target || this._rollTarget(oldState, 0);
+        const first = cells[0], last = cells[cells.length - 1];
+        const x1 = first.c + this.offsetX;
+        const z1 = first.r + this.offsetZ;
+        const x2 = last.c + this.offsetX;
+        const z2 = last.r + this.offsetZ;
 
         const minWX = Math.min(x1, x2);
         const maxWX = Math.max(x1, x2);
@@ -976,14 +1049,14 @@ class VoxelSceneRenderer {
             rotAxis.set(1, 0, 0);
         }
 
-        const worldPos = this.playerMesh.position.clone();
-        const worldQuat = this.playerMesh.quaternion.clone();
+        const worldPos = mesh.position.clone();
+        const worldQuat = mesh.quaternion.clone();
 
-        this.playerPivot.position.copy(pivotPos);
-        this.playerPivot.rotation.set(0, 0, 0);
+        pivot.position.copy(pivotPos);
+        pivot.rotation.set(0, 0, 0);
 
-        this.playerMesh.position.copy(worldPos).sub(pivotPos);
-        this.playerMesh.quaternion.copy(worldQuat);
+        mesh.position.copy(worldPos).sub(pivotPos);
+        mesh.quaternion.copy(worldQuat);
 
         return rotAxis;
     }
@@ -997,7 +1070,8 @@ class VoxelSceneRenderer {
         const dir = payload.action;
 
         this.applyStateTransform(oldState);
-        const rotAxis = this._setupRollPivot(oldState, dir);
+        const target = this._rollTarget(oldState, this._movingCube(oldState, newState));
+        const rotAxis = this._setupRollPivot(oldState, dir, target);
         const targetAngle = Math.PI / 2;
 
         if (typeof payload.moves === 'number') {
@@ -1010,11 +1084,12 @@ class VoxelSceneRenderer {
         const animateRoll = (now) => {
             const t = Math.min((now - startTime) / (duration * 1000), 1);
             const ease = 1 - Math.pow(1 - t, 2.2);
-            this.playerPivot.setRotationFromAxisAngle(rotAxis, targetAngle * ease);
+            target.pivot.setRotationFromAxisAngle(rotAxis, targetAngle * ease);
 
             if (t < 1) {
                 requestAnimationFrame(animateRoll);
             } else {
+                if (payload.selected !== undefined) this.selected = payload.selected; // bước lời giải AI
                 this.applyStateTransform(newState);
                 SFX.playStep(this.isStandingState(newState));
                 this.triggerLandingBounce(this.isStandingState(newState));
@@ -1042,14 +1117,15 @@ class VoxelSceneRenderer {
         const brokenCell = payload.broken_cell;
 
         this.applyStateTransform(oldState);
-        const rotAxis = this._setupRollPivot(oldState, dir);
+        const target = this._rollTarget(oldState, this.selected === null ? 0 : this.selected);
+        const rotAxis = this._setupRollPivot(oldState, dir, target);
         const targetAngle = Math.PI / 2;
         const duration = 0.15;
         const startTime = performance.now();
 
         const rollBeforeFall = (now) => {
             const t = Math.min((now - startTime) / (duration * 1000), 1);
-            this.playerPivot.setRotationFromAxisAngle(rotAxis, targetAngle * t);
+            target.pivot.setRotationFromAxisAngle(rotAxis, targetAngle * t);
             if (t < 1) {
                 requestAnimationFrame(rollBeforeFall);
             } else {
@@ -1060,24 +1136,24 @@ class VoxelSceneRenderer {
                     this.breakFragileTile(brokenCell[0], brokenCell[1]);
                 }
 
-                this._runFallTumble(dir, onComplete);
+                this._runFallTumble(dir, onComplete, target.pivot, target.mesh);
             }
         };
 
         requestAnimationFrame(rollBeforeFall);
     }
 
-    _runFallTumble(dir, onComplete) {
-        // Chuyển tọa độ playerMesh về thế giới để rơi tự do
+    _runFallTumble(dir, onComplete, pivot = this.playerPivot, mesh = this.playerMesh) {
+        // Chuyển tọa độ mesh về thế giới để rơi tự do
         const worldPos = new THREE.Vector3();
         const worldQuat = new THREE.Quaternion();
-        this.playerMesh.getWorldPosition(worldPos);
-        this.playerMesh.getWorldQuaternion(worldQuat);
+        mesh.getWorldPosition(worldPos);
+        mesh.getWorldQuaternion(worldQuat);
 
-        this.playerPivot.position.set(0, 0, 0);
-        this.playerPivot.rotation.set(0, 0, 0);
-        this.playerMesh.position.copy(worldPos);
-        this.playerMesh.quaternion.copy(worldQuat);
+        pivot.position.set(0, 0, 0);
+        pivot.rotation.set(0, 0, 0);
+        mesh.position.copy(worldPos);
+        mesh.quaternion.copy(worldQuat);
 
         let spinX = (Math.random() - 0.5) * 6;
         let spinZ = (Math.random() - 0.5) * 6;
@@ -1096,14 +1172,14 @@ class VoxelSceneRenderer {
             lastTime = now;
 
             vy -= 26 * dt;
-            this.playerMesh.position.x += vx * dt;
-            this.playerMesh.position.y += vy * dt;
-            this.playerMesh.position.z += vz * dt;
+            mesh.position.x += vx * dt;
+            mesh.position.y += vy * dt;
+            mesh.position.z += vz * dt;
 
-            this.playerMesh.rotation.x += spinX * dt;
-            this.playerMesh.rotation.z += spinZ * dt;
+            mesh.rotation.x += spinX * dt;
+            mesh.rotation.z += spinZ * dt;
 
-            if (this.playerMesh.position.y > -12) {
+            if (mesh.position.y > -12) {
                 requestAnimationFrame(fallLoop);
             } else {
                 if (onComplete) onComplete();
@@ -1328,7 +1404,10 @@ class VoxelSceneRenderer {
             }
         }
 
-        // 6. Cập nhật Gimbal Orbit Camera
+        // 6. Nhịp sáng của cube đang điều khiển khi khối tách
+        if (this.isSplit) this._updateSelectedGlow(elapsed);
+
+        // 7. Cập nhật Gimbal Orbit Camera
         this.gimbalCam.update(dt, false);
         this.renderer.render(this.scene, this.camera);
     }
@@ -1456,6 +1535,9 @@ class SceneProtocolClient {
             this.renderer.onFall(payload, done);
         } else if (type === 'on_win') {
             this.renderer.onWin(payload, done);
+        } else if (type === 'set_selected') {
+            this.renderer.setSelected(payload.cube);
+            done();
         } else if (type === 'set_biome') {
             this.renderer.setBiome(payload.biome || 'overworld');
             done();

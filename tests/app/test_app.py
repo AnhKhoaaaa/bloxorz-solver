@@ -170,6 +170,39 @@ def test_split_stage_playable_by_hand_through_webgl_events():
     assert controller.status == "won" and "on_win" in [c["type"] for c in reply["commands"]]
 
 
+def selections(commands):
+    return [c["payload"]["cube"] for c in commands if c["type"] == "set_selected"]
+
+
+def test_webgl_receives_selected_cube_on_split_switch_and_merge():
+    # Task 4.4: WebGL tô sáng cube đang điều khiển qua lệnh set_selected (SceneView.set_selected)
+    scene, controller = make_scene_view(), GameController([load_stage(FIXTURES / "split.json")])
+    scene.bind_controller(controller)
+    connect_events(scene, controller)
+    send = lambda event, action=None: scene.bridge.handle_client_event(event, {"action": action})["commands"]
+    assert selections(send("action", "RIGHT")) == []                # khối nguyên: không gửi
+    commands = send("action", "RIGHT")                              # event "split"
+    assert [c["type"] for c in commands] == ["on_move", "set_selected"] and selections(commands) == [0]
+    assert selections(send("action", "SWITCH")) == [1]              # Space: không có on_move, không tính nước
+    assert controller.moves == 2
+    assert selections(send("action", "RIGHT")) == [1]               # vẫn đi cube 1
+    assert selections(send("undo")) == [1]                          # vẽ lại màn khi vẫn tách: báo lại
+    assert selections(send("ready")) == [1]                         # trang tải lại
+    send("action", "SWITCH")                                        # chọn cube 0 ở (2,0); cube 1 ở (2,2)
+    commands = send("action", "RIGHT")                              # cube 0 sang (2,1) chạm cube 1: "merge"
+    assert selections(commands) == [None] and controller.last_event == "merge"
+    assert selections(send("restart")) == []
+
+
+def test_solution_steps_carry_selected_cube():
+    _, commands = solve_on("split", "astar")
+    steps = commands[-1]["payload"]["steps"]
+    for step in steps:
+        split = step["new_state"]["pose"] == "SPLIT"
+        assert (step["selected"] in (0, 1)) if split else step["selected"] is None
+    assert any(step["selected"] is not None for step in steps)
+
+
 def test_stage_navigation_wraps_around(router):
     router.handle("prev_stage", {})
     assert router.controller.index == 2 and router.scene.events[-1] == ("load", "fixture_split")
@@ -256,7 +289,7 @@ def test_solve_ai_unknown_algorithm_reports_error():
 
 
 # ---------- giao diện 2D trên WebGL (bloxorz/gui/web/) ----------
-UI_IDS = ("ui-stage-name", "ui-stage", "ui-moves", "ui-ai-badge", "btn-overworld", "btn-nether", "btn-end", "banner-msg")
+UI_IDS = ("ui-stage-name", "ui-stage", "ui-moves", "ui-cube", "ui-ai-badge", "btn-overworld", "btn-nether", "btn-end", "banner-msg")
 
 
 def test_index_delegates_ui_to_vt4_files():
@@ -328,6 +361,8 @@ const badgeText = el("ui-ai-badge").innerText, badgeShown = el("ui-ai-badge").st
 H.showSolver({ algorithm: "A*", status: "timeout", status_text: "quá thời gian", nodes_expanded: 900 });
 const badgeFail = el("ui-ai-badge").innerText;
 H.hideSolver();
+H.setSelected(1); const cubeText = el("ui-cube").innerText, cubeShown = el("ui-cube").style.display;
+H.setSelected(null); const cubeHidden = el("ui-cube").style.display;
 H.showBanner(); const bannerShown = el("banner-msg").classList.has("show");
 H.hideBanner();
 H.afterWin(client);
@@ -341,7 +376,7 @@ console.log(JSON.stringify({
   inserted, stageName: el("ui-stage-name").innerText, stage: el("ui-stage").innerText, moves: el("ui-moves").innerText,
   nether: el("btn-nether").classList.has("active"), overworld: el("btn-overworld").classList.has("active"),
   badgeBefore, badgeText, badgeShown, badgeFail, badgeAfter: el("ui-ai-badge").style.display,
-  bannerShown, bannerAfter: el("banner-msg").classList.has("show"), calls, keys,
+  bannerShown, bannerAfter: el("banner-msg").classList.has("show"), calls, keys, cubeText, cubeShown, cubeHidden,
 }));
 """
 
@@ -371,6 +406,21 @@ def test_hud_biome_badge_banner(hud_run):
     assert hud_run["badgeFail"] == "A*: QUÁ THỜI GIAN | 900 NODES"
     assert hud_run["badgeAfter"] == "none"
     assert hud_run["bannerShown"] and not hud_run["bannerAfter"]
+
+
+def test_hud_shows_selected_cube_when_split(hud_run):
+    assert hud_run["cubeText"] == "KHỐI 2/2 · SPACE ĐỔI KHỐI" and hud_run["cubeShown"] == "inline-block"
+    assert hud_run["cubeHidden"] == "none"
+
+
+def test_index_renders_split_cubes_and_selection():
+    html = INDEX.read_text(encoding="utf-8")
+    assert "type === 'set_selected'" in html and "setSelected(cube)" in html  # nhận lệnh tô sáng từ Python
+    assert "this.splitMeshes" in html and "_movingCube(oldState, newState)" in html  # 2 cube riêng, chỉ cube đi mới lăn
+    assert "BloxorzHud.setSelected(" in html
+    standalone = (ROOT / "standalone_browser.html").read_text(encoding="utf-8")
+    assert standalone == html.replace('href="web/hud.css"', 'href="bloxorz/gui/web/hud.css"').replace(
+        'src="web/hud.js"', 'src="bloxorz/gui/web/hud.js"')
 
 
 def test_gameplay_keys(hud_run):

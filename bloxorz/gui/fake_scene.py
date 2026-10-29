@@ -1,4 +1,4 @@
-# Phụ trách: VT4 - Task 4.2
+# Phụ trách: VT4 - Task 4.2 / 4.4
 """
 Mock scene dùng cho việc kiểm thử UI khi không có 3D.
 
@@ -20,6 +20,7 @@ from bloxorz.stage import Stage
 
 # Ký tự khi vẽ bằng chữ
 BLOCK = "@"
+OTHER_CUBE = "&"  # cube không được chọn khi khối đã tách
 BRIDGE_OPEN = "="
 BRIDGE_CLOSED = "-"
 SWITCH_CHARS = {"soft": "o", "heavy": "x", "split": "*"}
@@ -40,6 +41,10 @@ class Scene(Protocol):
     def on_win(self, state: State) -> None:
         """Khối đứng vào lỗ đích."""
 
+    def set_selected(self, cube: int | None) -> None:
+        """Tô sáng cube đang điều khiển khi khối tách (0 = state.pos, 1 = state.cube2); None: bỏ tô sáng.
+        load_stage tự bỏ tô sáng."""
+
     def is_animating(self) -> bool:
         """True khi scene đang bận diễn hoạt (khối đang lăn, rơi, ...); app sẽ giữ phím lại."""
 
@@ -51,6 +56,7 @@ class FakeScene:
         self.events: list[tuple] = []
         self.stage: Stage | None = None
         self.state: State | None = None
+        self.selected: int | None = None
         self.animating = False  # test đặt True để giả lập hoạt ảnh đang chạy
 
     def is_animating(self) -> bool:
@@ -58,6 +64,7 @@ class FakeScene:
 
     def load_stage(self, stage: Stage, state: State) -> None:
         self.stage, self.state = stage, state
+        self.selected = None
         self.events.append(("load", stage.id, state))
 
     def on_move(self, old: State, action: Action, new: State) -> None:
@@ -70,8 +77,13 @@ class FakeScene:
     def on_win(self, state: State) -> None:
         self.events.append(("win", state))
 
+    def set_selected(self, cube: int | None) -> None:
+        self.selected = cube
+        self.events.append(("selected", cube))
+
     def render(self) -> str:
-        """Lưới ký tự: ô màn chơi, cầu đang mở '=' / đóng '-', công tắc o/x/*, khối '@'."""
+        """Lưới ký tự: ô màn chơi, cầu đang mở '=' / đóng '-', công tắc o/x/*, khối '@' (khi tách: cube đang chọn
+        '@', cube còn lại '&')."""
         if self.stage is None or self.state is None:
             return ""
         stage, state = self.stage, self.state
@@ -84,9 +96,10 @@ class FakeScene:
             cells = [state.pos, state.cube2]
         else:
             cells = list(get_block_cells(state.pose, state.pos))
-        for r, c in cells:
+        for i, (r, c) in enumerate(cells):
             if 0 <= r < len(rows) and 0 <= c < len(rows[r]):
-                rows[r][c] = BLOCK
+                other = state.pose is None and self.selected is not None and i != self.selected
+                rows[r][c] = OTHER_CUBE if other else BLOCK
         return "\n".join("".join(row) for row in rows)
 
 
@@ -117,6 +130,26 @@ def _notify(controller: GameController, scene: Scene, old: State, result: str | 
         scene.on_fall(old, action)
     elif result in ("restart", "undo", "next", "prev"):
         scene.load_stage(controller.stage, controller.state)
+    notify_selected(controller, scene, result)
+
+
+def selected_cube(controller: GameController) -> int | None:
+    """Chỉ số cube đang chọn để scene tô sáng; None khi khối chưa tách."""
+    return controller.active_cube if controller.is_split else None
+
+
+def notify_selected(controller: GameController, scene: Scene, result: str | None) -> None:
+    """
+    Báo scene.set_selected sau 1 việc: đổi khối (Space), mỗi nước đi khi còn tách (kể cả vừa "split", vì số thứ tự
+    cube có thể đổi), event "merge" (None), và sau khi vẽ lại màn (restart/undo/đổi màn/"ready") nếu vẫn đang tách.
+    """
+    if result in ("moved", "won"):
+        notify = controller.is_split or controller.last_event == "merge"
+    else:
+        notify = result in ("switch", "restart", "undo", "next", "prev", "ready") and controller.is_split
+    set_selected = getattr(scene, "set_selected", None)
+    if notify and set_selected is not None:
+        set_selected(selected_cube(controller))
 
 
 class KeyBuffer:

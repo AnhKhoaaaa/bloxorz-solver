@@ -5,6 +5,8 @@ Kiểm thử khung ứng dụng chơi tay - Task 4.2
 - run_text: chơi trong terminal với input giả lập.
 - main.select_stages: chọn màn theo id hoặc đường dẫn file.
 - Issue #12: chọn cube khi khối tách; #13: KeyBuffer khi scene diễn hoạt; #14: make_scene báo lỗi view.py.
+- Task 4.4: nhớ cube đang chọn theo vị trí (selected_pos), event "split" / "merge", Space không tính nước đi,
+  scene.set_selected nhận đúng cube cần tô sáng.
 Không cần Ursina.
 """
 
@@ -312,3 +314,99 @@ def test_scene_view_protocol_contract():
         assert hasattr(SceneView, method_name), f"SceneView must have method {method_name}"
         assert callable(getattr(SceneView, method_name))
 
+
+# ---------- Task 4.4: điều khiển khi tách ----------
+
+@pytest.fixture
+def split_fixture():
+    # fixture_split: 2 lần sang phải đứng lên công tắc tách -> 2 cube ở (2,0) và (2,2)
+    return GameController([load_stage(FIXTURES / "split.json")])
+
+
+def test_split_event_selects_cube_at_pos(split_fixture):
+    g = split_fixture
+    g.move(R)
+    assert g.selected_pos is None and g.last_event is None
+    g.move(R)
+    assert g.last_event == "split" and g.state == State(None, (2, 0), (2, 2))
+    assert g.selected_pos == (2, 0) and g.active_cube == 0
+
+
+def test_space_selects_other_cube_without_counting_a_move(split_fixture):
+    g = split_fixture
+    g.move(R), g.move(R)
+    assert g.handle_key("space") == "switch"
+    assert g.selected_pos == (2, 2) and g.active_cube == 1 and g.moves == 2
+    g.switch_cube()
+    assert g.selected_pos == (2, 0) and g.moves == 2
+    assert len(g.history) == 2  # đổi khối không vào lịch sử undo
+
+
+def test_arrow_moves_selected_cube_and_keeps_following_it(split_fixture):
+    g = split_fixture
+    g.move(R), g.move(R), g.switch_cube()
+    g.move(R)
+    assert g.last_action.cube == 1 and g.state == State(None, (2, 0), (2, 3))
+    assert g.selected_pos == (2, 3)  # vị trí mới của cube vừa đi (khác cube đứng yên ở (2,0))
+    g.switch_cube()
+    g.move(R)
+    assert g.last_action.cube == 0 and g.selected_pos == (2, 1)
+
+
+def test_selected_pos_survives_cube_reorder():
+    # cube ở (0,0) đi xuống (1,0) > (0,2): State đổi chỗ 2 cube, nhưng vẫn chọn đúng cube vừa đi theo vị trí
+    g = GameController([stage(["S#####", "######", "#####G"])])
+    g.state, g.selected_pos = State(None, (0, 0), (0, 2)), (0, 0)
+    g.move(D)
+    assert g.state == State(None, (0, 2), (1, 0)) and g.selected_pos == (1, 0) and g.active_cube == 1
+
+
+def test_merge_event_clears_selection(split_fixture):
+    g = split_fixture
+    for d in (R, R):
+        g.move(d)
+    g.switch_cube(), g.move(R), g.switch_cube(), g.move(R)
+    assert g.is_split
+    g.move(R)
+    assert g.last_event == "merge" and not g.is_split and g.selected_pos is None
+    assert not g.switch_cube()
+
+
+def test_undo_restores_selection(split_fixture):
+    g = split_fixture
+    g.move(R), g.move(R), g.switch_cube(), g.move(R)
+    g.undo()
+    assert g.state == State(None, (2, 0), (2, 2)) and g.selected_pos == (2, 2)
+    g.undo()
+    assert not g.is_split and g.selected_pos is None
+
+
+def test_scene_set_selected_on_split_switch_move_and_merge(split_fixture):
+    g, scene = split_fixture, FakeScene()
+    scene.load_stage(g.stage, g.state)
+    for key in ("d", "d", "space", "d", "space", "d", "d"):
+        apply_key(g, scene, key)
+    selected = [e[1] for e in scene.events if e[0] == "selected"]
+    # split -> 0, Space -> 1, đi cube 1 -> 1, Space -> 0, đi cube 0 -> 0, merge -> None
+    assert selected == [0, 1, 1, 0, 0, None]
+    assert ("selected", None) == scene.events[-1] and scene.events[-2][0] == "move"
+
+
+def test_text_render_marks_selected_cube(split_fixture):
+    g, scene = split_fixture, FakeScene()
+    scene.load_stage(g.stage, g.state)
+    apply_key(g, scene, "d"), apply_key(g, scene, "d")
+    assert scene.render().splitlines()[2] == "@#&###G"
+    apply_key(g, scene, "space")
+    assert scene.render().splitlines()[2] == "&#@###G"
+    apply_key(g, scene, "d")
+    apply_key(g, scene, "u")  # vẽ lại màn khi vẫn tách: báo lại cube đang chọn sau load_stage
+    assert scene.events[-2][0] == "load" and scene.events[-1] == ("selected", 1)
+    assert scene.render().splitlines()[2] == "&#@###G"
+
+
+def test_no_selection_events_on_intact_block(game):
+    scene = FakeScene()
+    for key in ("d", "space", "u", "r"):
+        apply_key(game, scene, key)
+    assert not [e for e in scene.events if e[0] == "selected"]

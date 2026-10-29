@@ -81,7 +81,8 @@ def solution_steps(controller: GameController, actions: Sequence[Action],
                    serialize_move: Callable[..., dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Cho controller đi theo lời giải từ trạng thái hiện tại (đúng cube khi tách) để Python luôn khớp màn hình,
-    và trả các bước cho WebGL phát lại: serialize_move(old, action, new, moves) kèm is_win.
+    và trả các bước cho WebGL phát lại: serialize_move(old, action, new, moves) kèm is_win và selected
+    (cube đang chọn sau bước đó để tô sáng, None khi khối chưa tách).
     Dừng ở bước không hợp lệ với luật chơi.
     """
     steps = []
@@ -92,6 +93,7 @@ def solution_steps(controller: GameController, actions: Sequence[Action],
             break
         step = serialize_move(old, action, controller.state, controller.moves)
         step["is_win"] = outcome == "won"
+        step["selected"] = controller.active_cube if controller.is_split else None
         steps.append(step)
     return steps
 

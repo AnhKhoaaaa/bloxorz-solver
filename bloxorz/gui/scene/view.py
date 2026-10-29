@@ -189,6 +189,12 @@ class SceneView:
         if audio is not None:
             audio.play_win()
 
+    def set_selected(self, cube: Optional[int]) -> None:
+        """Tô sáng cube đang điều khiển khi khối tách (0 = state.pos, 1 = state.cube2); None: bỏ tô sáng."""
+        bridge = getattr(self, "bridge", None)
+        if bridge is not None:
+            bridge.send_command("set_selected", {"cube": cube})
+
     def play_solution(self, actions: list[Any], delay: float = 0.20) -> None:
         """5. Automatically step through solver actions in WebGL Three.js."""
         if not actions or self.current_stage is None or self.current_state is None:

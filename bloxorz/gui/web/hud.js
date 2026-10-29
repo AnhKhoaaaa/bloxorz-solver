@@ -19,6 +19,7 @@
             <div class="stats-row">
                 <div>STAGE: <span id="ui-stage" style="color:#55ffff">1/6</span></div>
                 <div>MOVES: <span id="ui-moves" style="color:#ffaa00">0</span></div>
+                <div id="ui-cube"></div>
                 <div id="ui-ai-badge">AI A*: 0 moves</div>
             </div>
         </div>
@@ -84,6 +85,14 @@
             document.getElementById("btn-overworld").classList.toggle("active", biomeName === "overworld");
             document.getElementById("btn-nether").classList.toggle("active", biomeName === "nether");
             document.getElementById("btn-end").classList.toggle("active", biomeName === "end");
+        },
+
+        /** Khối đang điều khiển khi khối tách (0 / 1); null: khối chưa tách, ẩn nhãn. */
+        setSelected(cube) {
+            const label = document.getElementById("ui-cube");
+            const show = cube === 0 || cube === 1;
+            label.style.display = show ? "inline-block" : "none";
+            label.innerText = show ? `KHỐI ${cube + 1}/2 · SPACE ĐỔI KHỐI` : "";
         },
 
         /** Huy hiệu kết quả AI: số bước, cost, thời gian, số nút mở rộng; hoặc lý do không giải được. */
