@@ -233,10 +233,11 @@ class SceneView:
                 if d is not None:
                     old_st = self.controller.state
                     outcome = self.controller.move(d)
+                    last_act = getattr(self.controller, "last_action", d)
                     if outcome == "fell":
-                        self.on_fall(old_st, d)
+                        self.on_fall(old_st, last_act)
                     elif outcome in ("moved", "won"):
-                        self.on_move(old_st, d, self.controller.state)
+                        self.on_move(old_st, last_act, self.controller.state)
                         if outcome == "won":
                             self.on_win(self.controller.state)
 
