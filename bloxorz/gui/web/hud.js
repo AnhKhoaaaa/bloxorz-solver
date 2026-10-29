@@ -114,7 +114,7 @@
         },
     };
 
-    // phím -> hàm của SceneBridge; bỏ qua khi cảnh đang diễn hoạt hoặc đang phát lời giải
+    // phím -> hàm của SceneBridge; bỏ qua khi cảnh đang diễn hoạt, đang chờ solver hoặc đang phát lời giải
     const GAMEPLAY_KEYS = {
         arrowleft: (c) => c.requestAction("LEFT"), a: (c) => c.requestAction("LEFT"),
         arrowright: (c) => c.requestAction("RIGHT"), d: (c) => c.requestAction("RIGHT"),
@@ -129,9 +129,9 @@
     };
 
     const BloxorzInput = {
-        /** Xử lý 1 phím chơi tay; bỏ qua khi cảnh đang diễn hoạt hoặc đang phát lời giải. */
+        /** Xử lý 1 phím chơi tay; bỏ qua khi cảnh đang diễn hoạt, đang chờ solver hoặc đang phát lời giải. */
         handleKey(event, client) {
-            if (client.isProcessing || client.isAutoPlaying) return false;
+            if (client.isProcessing || client.isAutoPlaying || client.isSolving) return false;
             const run = GAMEPLAY_KEYS[event.key.toLowerCase()];
             if (!run) return false;
             event.preventDefault();
