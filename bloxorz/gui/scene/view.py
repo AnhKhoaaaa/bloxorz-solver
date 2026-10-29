@@ -73,6 +73,7 @@ class SceneView:
                     stage_index=self.stage_index,
                     total_stages=self.total_stages,
                     moves=self.moves_count,
+                    active_cube=getattr(ctrl, "active_cube", 0),
                 )
                 bridge.send_command("load_stage", payload)
             except Exception:
@@ -94,6 +95,7 @@ class SceneView:
                     action=action,
                     new_state=new_state,
                     moves=self.moves_count,
+                    active_cube=getattr(ctrl, "active_cube", 0),
                 )
                 bridge.send_command("on_move", payload)
             except Exception:

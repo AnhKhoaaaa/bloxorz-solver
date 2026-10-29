@@ -48,10 +48,10 @@
             <div><span class="key-badge">CHUỘT TRÁI + KÉO</span> : GIMBAL ORBIT &nbsp; <span class="key-badge">CON LĂN</span> : ZOOM &nbsp; <span class="key-badge">C</span>/<span class="key-badge">T</span>/<span class="key-badge">Q</span>/<span class="key-badge">E</span> : GÓC CAM</div>
         </div>
         <div class="mc-panel help-panel" style="text-align: right;">
-            <div style="color:#ffaa00">CHÚ THÍCH KHỐI VOXEL 16x16:</div>
-            <div>CỔNG END ĐA TẦNG (G): Đích (Đứng thẳng 1x1)</div>
-            <div>BÀN ĐẠP GỖ (o): Bật/tắt cầu khi chạm bất kỳ</div>
-            <div>BÀN ĐẠP SẮT (x): Cần đứng thẳng đè mạnh</div>
+            <div style="color:#ffaa00">CHÚ THÍCH BÀN ĐẠP VOXEL (MINECRAFT):</div>
+            <div>BÀN ĐẠP SẮT (x): Iron Slab (Cần khối đứng thẳng đè nặng)</div>
+            <div>BÀN ĐẠP VÀNG (S): Golden Slab (Tách đôi thành 2 khối 1x1)</div>
+            <div>BÀN ĐẠP GỖ (o): Oak Slab (Chạm nhẹ bất kỳ là kích hoạt)</div>
             <div>CÁT CAM (! / F): Vỡ nếu đứng thẳng lên trên</div>
         </div>
     </div>

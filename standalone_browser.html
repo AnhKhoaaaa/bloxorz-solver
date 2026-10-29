@@ -342,6 +342,46 @@ class VoxelTextures {
         }).texture;
     }
 
+    static ironSlab() {
+        return this.createCanvasTexture((ctx) => {
+            for (let y = 0; y < 16; y++) {
+                for (let x = 0; x < 16; x++) {
+                    const border = x === 0 || y === 0 || x === 15 || y === 15;
+                    const inner = x === 1 || y === 1 || x === 14 || y === 14;
+                    if (border) {
+                        ctx.fillStyle = '#a4a4b4';
+                    } else if (inner) {
+                        ctx.fillStyle = '#ffffff';
+                    } else {
+                        ctx.fillStyle = (x + y) % 2 === 0 ? '#f5f5fc' : '#e6e6f0';
+                    }
+                    if ((x === 2 || x === 13) && (y === 2 || y === 13)) ctx.fillStyle = '#7a7a8a';
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }).texture;
+    }
+
+    static goldenSlab() {
+        return this.createCanvasTexture((ctx) => {
+            for (let y = 0; y < 16; y++) {
+                for (let x = 0; x < 16; x++) {
+                    const border = x === 0 || y === 0 || x === 15 || y === 15;
+                    const inner = x === 1 || y === 1 || x === 14 || y === 14;
+                    if (border) {
+                        ctx.fillStyle = '#b8860b';
+                    } else if (inner) {
+                        ctx.fillStyle = '#ffea60';
+                    } else {
+                        ctx.fillStyle = (x + y) % 2 === 0 ? '#ffd700' : '#ffc400';
+                    }
+                    if ((x === 2 || x === 13) && (y === 2 || y === 13)) ctx.fillStyle = '#fffca8';
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }).texture;
+    }
+
     static pressurePlate(isHeavy) {
         return this.createCanvasTexture((ctx) => {
             for (let y = 0; y < 16; y++) {
@@ -604,7 +644,8 @@ class VoxelSceneRenderer {
             fragile: VoxelTextures.fragileSand(),
             trapdoor: VoxelTextures.oakTrapdoor(),
             plateSoft: VoxelTextures.pressurePlate(false),
-            plateHeavy: VoxelTextures.pressurePlate(true),
+            plateHeavy: VoxelTextures.ironSlab(),
+            plateSplit: VoxelTextures.goldenSlab(),
             endFrame: VoxelTextures.endFrameTop(),
             portalAnim: VoxelTextures.createAnimatedPortal(),
             lavaAnim: VoxelTextures.createAnimatedLava()
@@ -621,7 +662,20 @@ class VoxelSceneRenderer {
             fragile: new THREE.MeshStandardMaterial({ map: this.tex.fragile, roughness: 0.9 }),
             trapdoor: new THREE.MeshStandardMaterial({ map: this.tex.trapdoor, roughness: 0.8 }),
             plateSoft: new THREE.MeshStandardMaterial({ map: this.tex.plateSoft, roughness: 0.7 }),
-            plateHeavy: new THREE.MeshStandardMaterial({ map: this.tex.plateHeavy, metalness: 0.5, roughness: 0.35 }),
+            plateHeavy: new THREE.MeshStandardMaterial({
+                map: this.tex.plateHeavy,
+                metalness: 0.15,
+                roughness: 0.35,
+                emissive: 0x333344,
+                emissiveIntensity: 0.2
+            }),
+            plateSplit: new THREE.MeshStandardMaterial({
+                map: this.tex.plateSplit,
+                metalness: 0.2,
+                roughness: 0.3,
+                emissive: 0x996600,
+                emissiveIntensity: 0.45
+            }),
             endFrame: new THREE.MeshStandardMaterial({ map: this.tex.endFrame, roughness: 0.7 }),
             portalInside: new THREE.MeshBasicMaterial({ map: this.tex.portalAnim.texture })
         };
@@ -758,13 +812,14 @@ class VoxelSceneRenderer {
         this.playerPivot.add(this.playerMesh);
         this.scene.add(this.playerPivot);
 
-        // 2 cube riêng khi khối tách: mỗi cube có pivot và vật liệu riêng để lăn và tô sáng độc lập
+        // 2 cube riêng khi khối tách: mỗi cube có pivot riêng để lăn độc lập
         (this.splitPivots || []).forEach(p => this.scene.remove(p));
+        if (this.purpleDiamond) { this.scene.remove(this.purpleDiamond); }
         this.splitPivots = [];
         this.splitMeshes = [];
         for (let i = 0; i < 2; i++) {
             const pivot = new THREE.Group();
-            const mesh = new THREE.Mesh(halfGeo, materials.map(m => m.clone()));
+            const mesh = new THREE.Mesh(halfGeo, materials);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
             pivot.add(mesh);
@@ -773,6 +828,19 @@ class VoxelSceneRenderer {
             this.splitPivots.push(pivot);
             this.splitMeshes.push(mesh);
         }
+
+        // Purple Diamond indicator: kim cương 4 cạnh màu tím lơ lửng phong cách Minecraft
+        const diamondGeo = new THREE.OctahedronGeometry(0.22, 0);
+        const diamondMat = new THREE.MeshStandardMaterial({
+            color: 0xc77dff,
+            emissive: 0x9d4edd,
+            emissiveIntensity: 0.95,
+            roughness: 0.1,
+            metalness: 0.4
+        });
+        this.purpleDiamond = new THREE.Mesh(diamondGeo, diamondMat);
+        this.purpleDiamond.visible = false;
+        this.scene.add(this.purpleDiamond);
     }
 
     /**
@@ -900,9 +968,16 @@ class VoxelSceneRenderer {
                     this.tileMeshes[key] = mesh;
 
                     const sw = switchMap[key];
-                    if (sw || ch === 'o' || ch === 'x') {
-                        const isHeavy = sw ? (sw.kind === 'heavy') : (ch === 'x');
-                        const plate = new THREE.Mesh(plateGeo, isHeavy ? this.mat.plateHeavy : this.mat.plateSoft);
+                    const isSwitchTile = Boolean(sw) || ch === 'o' || ch === 'x' || ch === 's' || ch === '(' || ch === ')';
+                    if (isSwitchTile) {
+                        let swMat = this.mat.plateSoft;
+                        const kind = sw ? sw.kind : (ch === 'x' ? 'heavy' : (ch === 's' || ch === '(' || ch === ')' ? 'split' : 'soft'));
+                        if (kind === 'heavy') {
+                            swMat = this.mat.plateHeavy; // Iron Slab (Minecraft)
+                        } else if (kind === 'split') {
+                            swMat = this.mat.plateSplit; // Golden Slab (Minecraft)
+                        }
+                        const plate = new THREE.Mesh(plateGeo, swMat);
                         plate.position.set(wx, 0.05, wz); // Nổi 0.05 đơn vị trên mặt sàn
                         plate.receiveShadow = true;
                         plate.castShadow = true;
@@ -946,7 +1021,7 @@ class VoxelSceneRenderer {
             this.splitMeshes[i].rotation.set(0, 0, 0);
             this.splitMeshes[i].scale.set(1, 1, 1);
         });
-        this._updateSelectedGlow(0);
+        this._updateDiamond(0);
         BloxorzHud.setSelected(this.isSplit ? this.selected : null);
 
         const x1 = this.b1.c + this.offsetX;
@@ -983,21 +1058,24 @@ class VoxelSceneRenderer {
         return state.pose === 'SPLIT';
     }
 
-    /** Tô sáng cube đang điều khiển khi khối tách (Python gọi qua lệnh set_selected). */
+    /** Đặt kim cương tím lên cube đang điều khiển khi khối tách (Python gọi qua lệnh set_selected). */
     setSelected(cube) {
         this.selected = (cube === 0 || cube === 1) ? cube : null;
-        this._updateSelectedGlow(0);
+        this._updateDiamond(0);
         BloxorzHud.setSelected(this.isSplit ? this.selected : null);
     }
 
-    _updateSelectedGlow(elapsed) {
-        (this.splitMeshes || []).forEach((mesh, i) => {
-            const on = this.isSplit && i === this.selected;
-            mesh.material.forEach(m => {
-                m.emissive.setHex(on ? 0x55ffff : 0x000000);
-                m.emissiveIntensity = on ? 0.35 + 0.2 * Math.sin(elapsed * 5) : 0;
-            });
-        });
+    /** Kim cương tím xoay, nhấp nhô trên cube đang điều khiển; bám theo cả khi cube đang lăn. */
+    _updateDiamond(elapsed) {
+        if (!this.purpleDiamond) return;
+        const show = this.isSplit && this.selected !== null;
+        this.purpleDiamond.visible = show;
+        if (!show) return;
+        const pos = new THREE.Vector3();
+        this.splitMeshes[this.selected].getWorldPosition(pos);
+        this.purpleDiamond.position.set(pos.x, pos.y + 0.85 + Math.sin(elapsed * 4.0) * 0.08, pos.z);
+        this.purpleDiamond.rotation.y = elapsed * 2.5;
+        this.purpleDiamond.rotation.z = Math.sin(elapsed * 1.5) * 0.12;
     }
 
     /** Cube nào lăn khi khối đang tách: ô cũ không còn nằm trong state mới (kể cả khi gộp lại). */
@@ -1404,8 +1482,8 @@ class VoxelSceneRenderer {
             }
         }
 
-        // 6. Nhịp sáng của cube đang điều khiển khi khối tách
-        if (this.isSplit) this._updateSelectedGlow(elapsed);
+        // 6. Kim cương tím trên cube đang điều khiển khi khối tách
+        if (this.isSplit) this._updateDiamond(elapsed);
 
         // 7. Cập nhật Gimbal Orbit Camera
         this.gimbalCam.update(dt, false);

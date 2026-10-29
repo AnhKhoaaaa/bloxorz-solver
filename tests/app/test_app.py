@@ -418,6 +418,7 @@ def test_index_renders_split_cubes_and_selection():
     assert "type === 'set_selected'" in html and "setSelected(cube)" in html  # nhận lệnh tô sáng từ Python
     assert "this.splitMeshes" in html and "_movingCube(oldState, newState)" in html  # 2 cube riêng, chỉ cube đi mới lăn
     assert "BloxorzHud.setSelected(" in html
+    assert "this.splitMeshes[this.selected].getWorldPosition" in html  # kim cương tím (VT3) đặt theo cube Python chọn
     standalone = (ROOT / "standalone_browser.html").read_text(encoding="utf-8")
     assert standalone == html.replace('href="web/hud.css"', 'href="bloxorz/gui/web/hud.css"').replace(
         'src="web/hud.js"', 'src="bloxorz/gui/web/hud.js"')
