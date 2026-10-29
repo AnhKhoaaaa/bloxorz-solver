@@ -2,10 +2,10 @@
 """
 Điểm khởi chạy ứng dụng chính Bloxorz Solver.
 
-    python main.py                       # cửa sổ Ursina, bắt đầu từ màn gốc đầu tiên
-    python main.py --stage stage_05      # bắt đầu từ màn có id stage_05
+    python main.py                                      # cửa sổ WebGL 3D, bắt đầu từ màn gốc đầu tiên
+    python main.py --stage stage_05                     # bắt đầu từ màn có id stage_05
     python main.py --stage stages/fixtures/split.json
-    python main.py --stages-dir stages/fixtures --text   # chơi trong terminal, không cần Ursina
+    python main.py --stages-dir stages/fixtures --text  # chơi trong terminal (không cần GUI)
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from bloxorz.gui.app import run
 from bloxorz.gui.controller import GameController
 from bloxorz.loader import load_stage, load_stages
 from bloxorz.stage import Stage
@@ -26,8 +27,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--stages-dir", type=Path, default=DEFAULT_STAGES_DIR, help="thư mục chứa file màn *.json")
     ap.add_argument("--stage", help="id màn (vd. stage_05) trong --stages-dir, hoặc đường dẫn tới 1 file .json")
     ap.add_argument("--text", action="store_true", help="chơi trong terminal thay vì mở cửa sổ 3D")
-    ap.add_argument("--opengl", action="store_true", help="chạy trực tiếp bằng Fallback Native OpenGL 3.3 Core (v2)")
-    ap.add_argument("--ursina", action="store_true", help="dùng giao diện Ursina cũ")
     return ap.parse_args(argv)
 
 
@@ -50,19 +49,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
     stages, index = select_stages(args.stages_dir, args.stage)
     controller = GameController(stages, index)
-    if args.text:
-        from bloxorz.gui.fake_scene import run_text
-        run_text(controller)
-        return
-    from bloxorz.gui.app import run
-    import os
-    env_engine = os.environ.get("ENGINE", os.environ.get("BLOXORZ_ENGINE", "")).lower()
-    if args.opengl or env_engine in ("opengl", "gl", "v2"):
-        engine = "opengl"
-    elif args.ursina or env_engine == "ursina":
-        engine = "ursina"
-    else:
-        engine = "webgl"
+    engine = "text" if args.text else "webgl"
     run(controller, engine=engine)
 
 

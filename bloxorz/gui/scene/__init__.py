@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from bloxorz.gui.scene.audio import ProceduralAudioEngine
 from bloxorz.gui.scene.bridge import RendererBridge
-from bloxorz.gui.scene.renderer import VoxelOpenGLRenderer
-from bloxorz.gui.scene.view import SceneView
+from bloxorz.gui.scene.view import SceneView, animate_roll
 
-__all__ = ["SceneView", "RendererBridge", "VoxelOpenGLRenderer", "ProceduralAudioEngine"]
+__all__ = ["SceneView", "RendererBridge", "ProceduralAudioEngine", "animate_roll"]
