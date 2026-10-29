@@ -73,6 +73,7 @@ class SceneView:
                     stage_index=self.stage_index,
                     total_stages=self.total_stages,
                     moves=self.moves_count,
+                    active_cube=getattr(ctrl, "active_cube", 0),
                 )
                 bridge.send_command("load_stage", payload)
             except Exception:
@@ -94,6 +95,7 @@ class SceneView:
                     action=action,
                     new_state=new_state,
                     moves=self.moves_count,
+                    active_cube=getattr(ctrl, "active_cube", 0),
                 )
                 bridge.send_command("on_move", payload)
             except Exception:
@@ -255,6 +257,12 @@ class SceneView:
                 prev_idx = (self.controller.index - 1) % len(self.controller.stages)
                 self.controller.load(prev_idx)
                 self.load_stage(self.controller.stage, self.controller.state)
+
+            elif event_type == "switch_cube":
+                if hasattr(self.controller, "switch_cube") and self.controller.switch_cube():
+                    bridge = getattr(self, "bridge", None)
+                    if bridge is not None:
+                        bridge.send_command("active_cube_changed", {"active_cube": self.controller.active_cube})
 
             elif event_type == "solve_ai":
                 algo = str(payload.get("algorithm", "astar")).lower()

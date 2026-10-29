@@ -147,6 +147,9 @@ class PyWebViewJsApi:
     def on_prev_stage(self) -> Dict[str, Any]:
         return self._bridge.handle_client_event("prev_stage", {})
 
+    def on_switch_cube(self) -> Dict[str, Any]:
+        return self._bridge.handle_client_event("switch_cube", {})
+
     def on_solve_ai(self, algorithm: str = "astar") -> Dict[str, Any]:
         return self._bridge.handle_client_event("solve_ai", {"algorithm": algorithm})
 
@@ -228,6 +231,7 @@ class RendererBridge:
         stage_index: int = 0,
         total_stages: int = 1,
         moves: int = 0,
+        active_cube: int = 0,
     ) -> Dict[str, Any]:
         return {
             "stage": stage_to_dict(stage),
@@ -235,6 +239,7 @@ class RendererBridge:
             "stage_index": stage_index,
             "total_stages": total_stages,
             "moves": moves,
+            "active_cube": active_cube,
         }
 
     @staticmethod
@@ -243,12 +248,16 @@ class RendererBridge:
         action: Any,
         new_state: Any,
         moves: int = 0,
+        active_cube: int = 0,
     ) -> Dict[str, Any]:
         old_d = state_to_dict(old_state)
         new_d = state_to_dict(new_state)
+        action_cube = getattr(action, "cube", None)
         return {
             "old_state": old_d,
             "action": action_to_name(action),
+            "action_cube": action_cube,
+            "active_cube": active_cube,
             "new_state": new_d,
             "bridges_changed": sorted(new_d["bridges_open"]) != sorted(old_d["bridges_open"]),
             "moves": moves,
