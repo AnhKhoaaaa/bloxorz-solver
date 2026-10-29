@@ -34,247 +34,16 @@
             left: 0;
             z-index: 1;
         }
-
-        /* MINECRAFT INVENTORY GUI STYLING */
-        .ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 18px;
-        }
-
-        .mc-panel {
-            background-color: rgba(28, 28, 34, 0.88);
-            border: 4px solid #000;
-            box-shadow:
-                inset 4px 4px 0px #55555a,
-                inset -4px -4px 0px #1a1a1d,
-                0 6px 20px rgba(0, 0, 0, 0.65);
-            padding: 12px 16px;
-            color: #ffffff;
-            pointer-events: auto;
-            text-shadow: 2px 2px 0px #000000;
-        }
-
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .title-box h1 {
-            margin: 0 0 8px 0;
-            font-size: 16px;
-            color: #55ff55;
-            letter-spacing: 1px;
-            text-shadow: 3px 3px 0px #003300;
-        }
-
-        .stage-title {
-            font-size: 9px;
-            color: #cccccc;
-            margin-bottom: 8px;
-        }
-
-        .stats-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            font-size: 11px;
-            color: #ffff55;
-            align-items: center;
-        }
-
-        #ui-ai-badge {
-            display: none;
-            font-size: 9px;
-            padding: 4px 8px;
-            background: #1f3b4d;
-            border: 2px solid #55ffff;
-            color: #55ffff;
-        }
-
-        .controls-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            align-items: center;
-        }
-
-        .mc-btn {
-            font-family: 'Press Start 2P', monospace;
-            font-size: 9px;
-            color: #e0e0e0;
-            background-color: #6e6e6e;
-            border: 3px solid #000;
-            box-shadow:
-                inset 3px 3px 0px #aaaaaa,
-                inset -3px -3px 0px #444444;
-            padding: 9px 11px;
-            cursor: pointer;
-            text-shadow: 2px 2px 0px #111;
-            transition: transform 0.05s;
-            pointer-events: auto;
-            outline: none;
-        }
-
-        .mc-btn:hover {
-            background-color: #7e88bf;
-            color: #ffffa0;
-            box-shadow:
-                inset 3px 3px 0px #b4beff,
-                inset -3px -3px 0px #4a5285;
-        }
-
-        .mc-btn:active, .mc-btn.active {
-            transform: translateY(2px);
-            background-color: #4c8527;
-            color: #ffffff;
-            box-shadow:
-                inset 3px 3px 0px #2b4f14,
-                inset -3px -3px 0px #73bd42;
-        }
-
-        .mc-btn.biome-nether.active {
-            background-color: #96221b;
-            box-shadow: inset 3px 3px 0px #520f0b, inset -3px -3px 0px #d44238;
-        }
-
-        .mc-btn.biome-end.active {
-            background-color: #672185;
-            box-shadow: inset 3px 3px 0px #360c47, inset -3px -3px 0px #a64bcc;
-        }
-
-        .mc-btn.ai-btn {
-            background-color: #1d697c;
-            color: #55ffff;
-            box-shadow:
-                inset 3px 3px 0px #45a5bd,
-                inset -3px -3px 0px #0f3b47;
-        }
-
-        .mc-btn.ai-btn:hover {
-            background-color: #2889a1;
-            color: #ffffff;
-        }
-
-        .bottom-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .help-panel {
-            font-size: 8.5px;
-            line-height: 1.85;
-            color: #cccccc;
-        }
-
-        .key-badge {
-            display: inline-block;
-            background: #333;
-            border: 2px solid #000;
-            box-shadow: inset 2px 2px 0px #666;
-            padding: 1px 5px;
-            color: #55ffff;
-            margin: 0 2px;
-        }
-
-        /* Toast Banner Thông Báo Màn Chơi */
-        #banner-msg {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.8);
-            background: rgba(0, 0, 0, 0.88);
-            border: 4px solid #fff;
-            box-shadow: 0 0 30px rgba(85, 255, 85, 0.6), inset 4px 4px 0 #55ff55, inset -4px -4px 0 #007700;
-            padding: 24px 36px;
-            color: #55ff55;
-            font-size: 20px;
-            text-align: center;
-            z-index: 30;
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            text-shadow: 3px 3px 0 #000;
-        }
-
-        #banner-msg.show {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-        }
-
-        #banner-msg .sub {
-            display: block;
-            margin-top: 12px;
-            font-size: 11px;
-            color: #ffff55;
-        }
     </style>
+    <!-- Giao diện 2D (VT4): bloxorz/gui/web/hud.css -->
+    <link rel="stylesheet" href="web/hud.css">
 </head>
 <body>
 
 <div id="canvas-container"></div>
 
-<div class="ui-layer">
-    <div class="top-bar">
-        <div class="mc-panel title-box">
-            <h1>BLOXORZ: VOXEL EDITION</h1>
-            <div class="stage-title" id="ui-stage-name">STAGE 1: KHỞI ĐẦU CỔNG END</div>
-            <div class="stats-row">
-                <div>STAGE: <span id="ui-stage" style="color:#55ffff">1/6</span></div>
-                <div>MOVES: <span id="ui-moves" style="color:#ffaa00">0</span></div>
-                <div id="ui-ai-badge">AI A*: 0 moves</div>
-            </div>
-        </div>
-
-        <div class="mc-panel controls-bar">
-            <button class="mc-btn active" id="btn-overworld" onclick="SceneBridge.setBiome('overworld')">Overworld</button>
-            <button class="mc-btn biome-nether" id="btn-nether" onclick="SceneBridge.setBiome('nether')">Nether</button>
-            <button class="mc-btn biome-end" id="btn-end" onclick="SceneBridge.setBiome('end')">The End</button>
-            <span style="color:#555">|</span>
-            <button class="mc-btn ai-btn" onclick="SceneBridge.requestAISolve('astar')" title="Giải tự động bằng thuật toán A*">AI Solve (A*)</button>
-            <button class="mc-btn ai-btn" onclick="SceneBridge.requestAISolve('bfs')" title="Giải tự động bằng thuật toán BFS">AI Solve (BFS)</button>
-            <span style="color:#555">|</span>
-            <button class="mc-btn" onclick="SceneBridge.requestUndo()">Undo (U)</button>
-            <button class="mc-btn" onclick="SceneBridge.requestRestart()">Restart (R)</button>
-            <button class="mc-btn" onclick="SceneBridge.requestPrevStage()">&lt; Prev (P)</button>
-            <button class="mc-btn" onclick="SceneBridge.requestNextStage()">Next (N) &gt;</button>
-        </div>
-    </div>
-
-    <div class="bottom-bar">
-        <div class="mc-panel help-panel">
-            <div><span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> / <span class="key-badge">ARROWS</span> : LẬT KHỐI GỖ SỒI &nbsp; <span class="key-badge">SPACE</span> : ĐỔI KHỐI (TÁCH) &nbsp; <span class="key-badge">G</span> : AI SOLVE</div>
-            <div><span class="key-badge">U</span> : HOÀN TÁC &nbsp; <span class="key-badge">R</span> : CHƠI LẠI &nbsp; <span class="key-badge">P</span>/<span class="key-badge">N</span> : ĐỔI MÀN &nbsp; <span class="key-badge">1</span><span class="key-badge">2</span><span class="key-badge">3</span> : BIOME</div>
-            <div><span class="key-badge">CHUỘT TRÁI + KÉO</span> : GIMBAL ORBIT &nbsp; <span class="key-badge">CON LĂN</span> : ZOOM &nbsp; <span class="key-badge">C</span>/<span class="key-badge">T</span>/<span class="key-badge">Q</span>/<span class="key-badge">E</span> : GÓC CAM</div>
-        </div>
-        <div class="mc-panel help-panel" style="text-align: right;">
-            <div style="color:#ffaa00">CHÚ THÍCH BÀN ĐẠP VOXEL (MINECRAFT):</div>
-            <div>BÀN ĐẠP SẮT (x): Iron Slab (Cần khối đứng thẳng đè nặng)</div>
-            <div>BÀN ĐẠP VÀNG (S): Golden Slab (Tách đôi thành 2 khối 1x1)</div>
-            <div>BÀN ĐẠP GỖ (o): Oak Slab (Chạm nhẹ bất kỳ là kích hoạt)</div>
-            <div>CÁT CAM (! / F): Vỡ nếu đứng thẳng lên trên</div>
-        </div>
-    </div>
-</div>
-
-<div id="banner-msg">
-    STAGE CLEAR!
-    <span class="sub">ĐANG DỊCH CHUYỂN QUA CỔNG END...</span>
-</div>
+<!-- Giao diện 2D + phím chơi tay (VT4): bloxorz/gui/web/hud.js dựng lớp giao diện tại đây -->
+<script src="web/hud.js"></script>
 
 <script>
 /**
@@ -967,9 +736,7 @@ class VoxelSceneRenderer {
 
     setBiome(biomeName) {
         this.biome = biomeName;
-        document.getElementById('btn-overworld').classList.toggle('active', biomeName === 'overworld');
-        document.getElementById('btn-nether').classList.toggle('active', biomeName === 'nether');
-        document.getElementById('btn-end').classList.toggle('active', biomeName === 'end');
+        BloxorzHud.markBiome(biomeName);
 
         if (biomeName === 'overworld') {
             this.scene.background = new THREE.Color(0x87ceeb);
@@ -1017,9 +784,6 @@ class VoxelSceneRenderer {
         if (this.playerPivot) {
             this.scene.remove(this.playerPivot);
         }
-        if (this.cube1Mesh) { this.scene.remove(this.cube1Mesh); }
-        if (this.cube2Mesh) { this.scene.remove(this.cube2Mesh); }
-        if (this.purpleDiamond) { this.scene.remove(this.purpleDiamond); }
 
         this.playerPivot = new THREE.Group();
         this.playerMesh = new THREE.Group();
@@ -1045,35 +809,6 @@ class VoxelSceneRenderer {
 
         this.playerPivot.add(this.playerMesh);
         this.scene.add(this.playerPivot);
-
-        // 2 Khối 1x1x1 độc lập dùng khi phân tách (Split Mode)
-        this.cube1Mesh = new THREE.Mesh(halfGeo, materials);
-        this.cube1Mesh.castShadow = true;
-        this.cube1Mesh.receiveShadow = true;
-        this.cube1Mesh.visible = false;
-        this.scene.add(this.cube1Mesh);
-
-        this.cube2Mesh = new THREE.Mesh(halfGeo, materials);
-        this.cube2Mesh.castShadow = true;
-        this.cube2Mesh.receiveShadow = true;
-        this.cube2Mesh.visible = false;
-        this.scene.add(this.cube2Mesh);
-
-        // Purple Diamond indicator: kim cương 4 cạnh màu tím lơ lửng phong cách Minecraft
-        const diamondGeo = new THREE.OctahedronGeometry(0.22, 0);
-        const diamondMat = new THREE.MeshStandardMaterial({
-            color: 0xc77dff,
-            emissive: 0x9d4edd,
-            emissiveIntensity: 0.95,
-            roughness: 0.1,
-            metalness: 0.4
-        });
-        this.purpleDiamond = new THREE.Mesh(diamondGeo, diamondMat);
-        this.purpleDiamond.visible = false;
-        this.scene.add(this.purpleDiamond);
-
-        this.isSplit = false;
-        this.activeCube = 0;
     }
 
     /**
@@ -1221,14 +956,10 @@ class VoxelSceneRenderer {
             }
         }
 
-        if (typeof payload.active_cube === 'number') {
-            this.activeCube = payload.active_cube;
-        }
-
         this._createPlayerMesh();
         this.applyStateTransform(state, true);
 
-        document.getElementById('banner-msg').classList.remove('show');
+        BloxorzHud.hideBanner();
         this.updateHUD(
             stage.name,
             (payload.stage_index || 0) + 1,
@@ -1251,84 +982,25 @@ class VoxelSceneRenderer {
         const x2 = this.b2.c + this.offsetX;
         const z2 = this.b2.r + this.offsetZ;
 
-        const isSplit = Boolean(state && state.pose === 'SPLIT');
-        this.isSplit = isSplit;
+        const cx = (x1 + x2) / 2;
+        const cz = (z1 + z2) / 2;
 
-        let targetCamX = (x1 + x2) / 2;
-        let targetCamZ = (z1 + z2) / 2;
-
-        if (isSplit) {
-            // Khi phân tách: Ẩn khối 1x2x1, hiện 2 khối 1x1x1 độc lập
-            this.playerMesh.visible = false;
-            this.cube1Mesh.visible = true;
-            this.cube2Mesh.visible = true;
-
-            if (instantCam) {
-                this.cube1Mesh.position.set(x1, 0.5, z1);
-                this.cube2Mesh.position.set(x2, 0.5, z2);
-                this.cube1Mesh.quaternion.identity();
-                this.cube2Mesh.quaternion.identity();
-            } else {
-                // Ghép nối thông minh theo khoảng cách gần nhất để chống hoán đổi mesh / chống đoạt lượt
-                const c1 = this.cube1Mesh.position;
-                const c2 = this.cube2Mesh.position;
-                const dDirect = Math.hypot(c1.x - x1, c1.z - z1) + Math.hypot(c2.x - x2, c2.z - z2);
-                const dCross = Math.hypot(c1.x - x2, c1.z - z2) + Math.hypot(c2.x - x1, c2.z - z1);
-                if (dCross < dDirect) {
-                    this.cube1Mesh.position.set(x2, 0.5, z2);
-                    this.cube2Mesh.position.set(x1, 0.5, z1);
-                } else {
-                    this.cube1Mesh.position.set(x1, 0.5, z1);
-                    this.cube2Mesh.position.set(x2, 0.5, z2);
-                }
-            }
-
-            // Purple Diamond (viên kim cương 4 cạnh tím) luôn ở trên đúng viên activeCube
-            this.updateDiamondPosition();
-            targetCamX = (x1 + x2) / 2;
-            targetCamZ = (z1 + z2) / 2;
+        if (this.isStandingState(state)) {
+            this.playerMesh.position.set(cx, 1.0, cz);
+            this.playerMesh.rotation.set(0, 0, 0);
+        } else if (this.b1.r === this.b2.r) {
+            this.playerMesh.position.set(cx, 0.5, cz);
+            this.playerMesh.rotation.set(0, 0, Math.PI / 2);
         } else {
-            // Khối nguyên vẹn 1x1x2
-            this.playerMesh.visible = true;
-            this.cube1Mesh.visible = false;
-            this.cube2Mesh.visible = false;
-            if (this.purpleDiamond) {
-                this.purpleDiamond.visible = false;
-            }
-
-            const cx = (x1 + x2) / 2;
-            const cz = (z1 + z2) / 2;
-
-            if (this.isStandingState(state)) {
-                this.playerMesh.position.set(cx, 1.0, cz);
-                this.playerMesh.rotation.set(0, 0, 0);
-            } else if (this.b1.r === this.b2.r) {
-                this.playerMesh.position.set(cx, 0.5, cz);
-                this.playerMesh.rotation.set(0, 0, Math.PI / 2);
-            } else {
-                this.playerMesh.position.set(cx, 0.5, cz);
-                this.playerMesh.rotation.set(Math.PI / 2, 0, 0);
-            }
-            targetCamX = cx;
-            targetCamZ = cz;
+            this.playerMesh.position.set(cx, 0.5, cz);
+            this.playerMesh.rotation.set(Math.PI / 2, 0, 0);
         }
 
         this.playerMesh.scale.set(1, 1, 1);
-        this.gimbalCam.setTarget(targetCamX, 0, targetCamZ);
+        this.gimbalCam.setTarget(cx, 0, cz);
         if (instantCam) {
             this.gimbalCam.update(0.016, true);
         }
-    }
-
-    updateDiamondPosition() {
-        if (!this.purpleDiamond) return;
-        if (!this.isSplit) {
-            this.purpleDiamond.visible = false;
-            return;
-        }
-        const activePos = (this.activeCube === 0) ? this.cube1Mesh.position : this.cube2Mesh.position;
-        this.purpleDiamond.position.set(activePos.x, 1.35, activePos.z);
-        this.purpleDiamond.visible = true;
     }
 
     isStandingState(state) {
@@ -1385,80 +1057,13 @@ class VoxelSceneRenderer {
         const newState = payload.new_state;
         const dir = payload.action;
 
-        if (typeof payload.moves === 'number') {
-            document.getElementById('ui-moves').innerText = payload.moves;
-        }
-
-        // Xử lý diễn hoạt lăn lật 90 độ quanh cạnh đáy cho viên lập phương đơn lẻ (Split Mode)
-        if (oldState && oldState.pose === 'SPLIT') {
-            this.applyStateTransform(oldState);
-            const actCube = (typeof payload.action_cube === 'number') ? payload.action_cube : this.activeCube;
-            const targetMesh = (actCube === 0) ? this.cube1Mesh : this.cube2Mesh;
-            const startPos = targetMesh.position.clone();
-            const startQuat = targetMesh.quaternion.clone();
-
-            // Xác định điểm tựa quay ở cạnh đáy (Pivot) và trục quay (Axis)
-            const pivot = new THREE.Vector3();
-            const rotAxis = new THREE.Vector3();
-            if (dir === 'LEFT') {
-                pivot.set(startPos.x - 0.5, 0, startPos.z);
-                rotAxis.set(0, 0, 1);
-            } else if (dir === 'RIGHT') {
-                pivot.set(startPos.x + 0.5, 0, startPos.z);
-                rotAxis.set(0, 0, -1);
-            } else if (dir === 'UP') {
-                pivot.set(startPos.x, 0, startPos.z - 0.5);
-                rotAxis.set(-1, 0, 0);
-            } else if (dir === 'DOWN') {
-                pivot.set(startPos.x, 0, startPos.z + 0.5);
-                rotAxis.set(1, 0, 0);
-            }
-
-            const r0 = startPos.clone().sub(pivot);
-            const targetAngle = Math.PI / 2;
-            const duration = 0.16;
-            const startTime = performance.now();
-
-            const animateSplitRoll = (now) => {
-                const t = Math.min((now - startTime) / (duration * 1000), 1);
-                const ease = 1 - Math.pow(1 - t, 2.2);
-                const currentAngle = targetAngle * ease;
-
-                // Quay vị trí quanh cạnh đáy
-                const curR = r0.clone().applyAxisAngle(rotAxis, currentAngle);
-                targetMesh.position.copy(pivot).add(curR);
-
-                // Quay góc hướng của khối
-                const qStep = new THREE.Quaternion().setFromAxisAngle(rotAxis, currentAngle);
-                targetMesh.quaternion.copy(qStep).multiply(startQuat);
-
-                // Purple Diamond bám theo đỉnh khối đang lăn
-                if (this.purpleDiamond && this.purpleDiamond.visible) {
-                    this.purpleDiamond.position.set(targetMesh.position.x, targetMesh.position.y + 0.85, targetMesh.position.z);
-                }
-
-                if (t < 1) {
-                    requestAnimationFrame(animateSplitRoll);
-                } else {
-                    targetMesh.quaternion.identity();
-                    this.applyStateTransform(newState);
-                    SFX.playStep(false);
-                    this.triggerLandingBounce(false);
-                    this._depressOccupiedPlates(newState);
-                    if (payload.bridges_changed) {
-                        SFX.playSwitch();
-                        this._syncBridges(newState.bridges_open || []);
-                    }
-                    if (onComplete) onComplete();
-                }
-            };
-            requestAnimationFrame(animateSplitRoll);
-            return;
-        }
-
         this.applyStateTransform(oldState);
         const rotAxis = this._setupRollPivot(oldState, dir);
         const targetAngle = Math.PI / 2;
+
+        if (typeof payload.moves === 'number') {
+            BloxorzHud.setMoves(payload.moves);
+        }
 
         const duration = 0.16; // Chuẩn 0.16 giây
         const startTime = performance.now();
@@ -1582,8 +1187,7 @@ class VoxelSceneRenderer {
         const wz = state.b1.r + this.offsetZ;
         this.spawnFireworks(wx, 1.2, wz);
 
-        const banner = document.getElementById('banner-msg');
-        banner.classList.add('show');
+        BloxorzHud.showBanner();
 
         const start = performance.now();
         const dur = 950;
@@ -1598,9 +1202,9 @@ class VoxelSceneRenderer {
                 requestAnimationFrame(sinkLoop);
             } else {
                 setTimeout(() => {
-                    banner.classList.remove('show');
+                    BloxorzHud.hideBanner();
                     if (onComplete) onComplete();
-                    SceneBridge.requestNextStage();
+                    BloxorzHud.afterWin(SceneBridge);
                 }, 700);
             }
         };
@@ -1703,9 +1307,7 @@ class VoxelSceneRenderer {
     }
 
     updateHUD(stageName, stageIdx, totalStages, moves) {
-        if (stageName) document.getElementById('ui-stage-name').innerText = stageName;
-        document.getElementById('ui-stage').innerText = `${stageIdx}/${totalStages}`;
-        document.getElementById('ui-moves').innerText = moves;
+        BloxorzHud.updateStats(stageName, stageIdx, totalStages, moves);
     }
 
     animate() {
@@ -1787,18 +1389,6 @@ class VoxelSceneRenderer {
             }
         }
 
-        // 5.5 Cập nhật Purple Diamond (viên kim cương 4 cạnh tím) xoay và nhấp nhô
-        if (this.purpleDiamond && this.purpleDiamond.visible) {
-            this.purpleDiamond.rotation.y = elapsed * 2.5;
-            this.purpleDiamond.rotation.z = Math.sin(elapsed * 1.5) * 0.12;
-            const targetCube = (this.activeCube === 0) ? this.cube1Mesh : this.cube2Mesh;
-            if (targetCube) {
-                this.purpleDiamond.position.x = targetCube.position.x;
-                this.purpleDiamond.position.z = targetCube.position.z;
-                this.purpleDiamond.position.y = 1.35 + Math.sin(elapsed * 4.0) * 0.08;
-            }
-        }
-
         // 6. Cập nhật Gimbal Orbit Camera
         this.gimbalCam.update(dt, false);
         this.renderer.render(this.scene, this.camera);
@@ -1816,6 +1406,7 @@ class SceneProtocolClient {
         this.cmdQueue = [];
         this.isProcessing = false;
         this.isAutoPlaying = false;
+        this.isSolving = false; // đang chờ Python giải: khóa mọi thao tác để kết quả không rơi vào màn khác
 
         this._bindKeyboard();
         this._initBridgeConnection();
@@ -1832,30 +1423,8 @@ class SceneProtocolClient {
             if (key === 'q') { this.renderer.gimbalCam.rotateStep(45); return; }
             if (key === 'e') { this.renderer.gimbalCam.rotateStep(-45); return; }
 
-            if (this.isProcessing || this.isAutoPlaying) return;
-
-            if (key === 'arrowleft' || key === 'a') { e.preventDefault(); this.requestAction('LEFT'); }
-            else if (key === 'arrowright' || key === 'd') { e.preventDefault(); this.requestAction('RIGHT'); }
-            else if (key === 'arrowup' || key === 'w') { e.preventDefault(); this.requestAction('UP'); }
-            else if (key === 'arrowdown' || key === 's') { e.preventDefault(); this.requestAction('DOWN'); }
-            else if (key === 'u') { e.preventDefault(); this.requestUndo(); }
-            else if (key === 'r') { e.preventDefault(); this.requestRestart(); }
-            else if (key === 'n') { e.preventDefault(); this.requestNextStage(); }
-            else if (key === 'p') { e.preventDefault(); this.requestPrevStage(); }
-            else if (key === ' ') {
-                e.preventDefault();
-                if (this.renderer.isSplit) {
-                    this.renderer.activeCube = 1 - this.renderer.activeCube;
-                    this.renderer.updateDiamondPosition();
-                    this._sendEvent('switch_cube');
-                }
-            }
-            else if (key === 'g') { e.preventDefault(); this.requestAISolve('astar'); }
-            else if (key === 'escape') {
-                e.preventDefault();
-                this._sendEvent('exit');
-                if (window.close) window.close();
-            }
+            // phím chơi tay do VT4 xử lý (bloxorz/gui/web/hud.js)
+            BloxorzInput.handleKey(e, this);
         });
     }
 
@@ -1870,7 +1439,6 @@ class SceneProtocolClient {
                 else if (eventName === 'restart') res = await window.pywebview.api.on_restart();
                 else if (eventName === 'next_stage') res = await window.pywebview.api.on_next_stage();
                 else if (eventName === 'prev_stage') res = await window.pywebview.api.on_prev_stage();
-                else if (eventName === 'switch_cube') res = await window.pywebview.api.on_switch_cube();
                 else if (eventName === 'solve_ai') res = await window.pywebview.api.on_solve_ai(payload.algorithm);
 
                 if (res && res.commands) {
@@ -1942,7 +1510,7 @@ class SceneProtocolClient {
 
         if (type === 'load_stage') {
             this.isAutoPlaying = false;
-            document.getElementById('ui-ai-badge').style.display = 'none';
+            BloxorzHud.hideSolver();
             this.renderer.loadStage(payload, done);
         } else if (type === 'on_move') {
             this.renderer.onMove(payload, done);
@@ -1952,12 +1520,6 @@ class SceneProtocolClient {
             this.renderer.onWin(payload, done);
         } else if (type === 'set_biome') {
             this.renderer.setBiome(payload.biome || 'overworld');
-            done();
-        } else if (type === 'active_cube_changed') {
-            if (typeof payload.active_cube === 'number') {
-                this.renderer.activeCube = payload.active_cube;
-                this.renderer.updateDiamondPosition();
-            }
             done();
         } else if (type === 'play_solution') {
             this._executePlaySolution(payload, done);
@@ -1974,11 +1536,7 @@ class SceneProtocolClient {
         const delayMs = Math.max(40, (payload.delay || 0.22) * 1000);
         const solver = payload.solver;
 
-        const badge = document.getElementById('ui-ai-badge');
-        if (solver) {
-            badge.style.display = 'inline-block';
-            badge.innerText = `${solver.algorithm}: ${solver.cost} MOVES | ${solver.execution_time_ms}ms | ${solver.nodes_expanded} NODES`;
-        }
+        BloxorzHud.showSolver(solver);
 
         if (steps.length === 0) {
             if (onComplete) onComplete();
@@ -2015,39 +1573,44 @@ class SceneProtocolClient {
     }
 
     requestAction(actionName) {
-        if (this.isProcessing || this.isAutoPlaying) return;
+        if (this.isProcessing || this.isAutoPlaying || this.isSolving) return;
         this._sendEvent('action', { action: actionName });
     }
 
     requestUndo() {
-        if (this.isProcessing || this.isAutoPlaying) return;
+        if (this.isProcessing || this.isAutoPlaying || this.isSolving) return;
         this._sendEvent('undo');
     }
 
     requestRestart() {
-        if (this.isAutoPlaying) return;
+        if (this.isAutoPlaying || this.isSolving) return;
         this.cmdQueue = [];
         this.isProcessing = false;
         this._sendEvent('restart');
     }
 
     requestNextStage() {
-        if (this.isAutoPlaying) return;
+        if (this.isAutoPlaying || this.isSolving) return;
         this.cmdQueue = [];
         this.isProcessing = false;
         this._sendEvent('next_stage');
     }
 
     requestPrevStage() {
-        if (this.isAutoPlaying) return;
+        if (this.isAutoPlaying || this.isSolving) return;
         this.cmdQueue = [];
         this.isProcessing = false;
         this._sendEvent('prev_stage');
     }
 
-    requestAISolve(algorithm = 'astar') {
-        if (this.isProcessing || this.isAutoPlaying) return;
-        this._sendEvent('solve_ai', { algorithm });
+    async requestAISolve(algorithm = 'astar') {
+        if (this.isProcessing || this.isAutoPlaying || this.isSolving) return;
+        this.isSolving = true;
+        try {
+            await this._sendEvent('solve_ai', { algorithm });
+        } finally {
+            this.isSolving = false;
+        }
     }
 }
 

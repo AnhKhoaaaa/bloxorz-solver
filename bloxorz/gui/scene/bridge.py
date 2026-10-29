@@ -12,6 +12,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+# Giao diện 2D + phím chơi tay của VT4, index.html tải qua /web/<tên file>
+WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+WEB_ASSETS = {"hud.css": "text/css; charset=utf-8", "hud.js": "application/javascript; charset=utf-8"}
+
 
 def stage_to_dict(stg: Any) -> Dict[str, Any]:
     """Chuyển đổi Stage của bloxorz sang dict chuẩn JSON cho Three.js."""
@@ -146,9 +150,6 @@ class PyWebViewJsApi:
 
     def on_prev_stage(self) -> Dict[str, Any]:
         return self._bridge.handle_client_event("prev_stage", {})
-
-    def on_switch_cube(self) -> Dict[str, Any]:
-        return self._bridge.handle_client_event("switch_cube", {})
 
     def on_solve_ai(self, algorithm: str = "astar") -> Dict[str, Any]:
         return self._bridge.handle_client_event("solve_ai", {"algorithm": algorithm})
@@ -308,6 +309,19 @@ class RendererBridge:
                         self.wfile.write(content)
                     else:
                         self.send_error(404, "Không tìm thấy index.html")
+                elif self.path.startswith("/web/"):
+                    # Giao diện 2D của VT4 (bloxorz/gui/web/); chỉ phục vụ đúng các file trong danh sách cho phép
+                    name = self.path[len("/web/"):]
+                    asset = WEB_DIR / name
+                    if name in WEB_ASSETS and asset.is_file():
+                        content = asset.read_bytes()
+                        self.send_response(200)
+                        self.send_header("Content-Type", WEB_ASSETS[name])
+                        self.send_header("Content-Length", str(len(content)))
+                        self.end_headers()
+                        self.wfile.write(content)
+                    else:
+                        self.send_error(404)
                 elif self.path == "/api/poll":
                     cmds = bridge_ref.drain_commands()
                     body = json.dumps({"commands": cmds}, ensure_ascii=False).encode("utf-8")
