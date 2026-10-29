@@ -453,6 +453,9 @@ class SceneView:
         self, title: str = "Bloxorz: Voxel Edition (Native OpenGL 3.3 / GLSL)"
     ) -> None:
         """Launch the Native Python OpenGL 3.3 Core Desktop Window at 60 FPS."""
+        if self.current_stage is None and self.controller is not None:
+            self.load_stage(self.controller.stage, self.controller.state)
+
         import gi
 
         gi.require_version("Gtk", "3.0")

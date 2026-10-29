@@ -55,9 +55,11 @@ def main(argv: list[str] | None = None) -> None:
         run_text(controller)
         return
     from bloxorz.gui.app import run
-    if args.opengl:
+    import os
+    env_engine = os.environ.get("ENGINE", os.environ.get("BLOXORZ_ENGINE", "")).lower()
+    if args.opengl or env_engine in ("opengl", "gl", "v2"):
         engine = "opengl"
-    elif args.ursina:
+    elif args.ursina or env_engine == "ursina":
         engine = "ursina"
     else:
         engine = "webgl"
