@@ -204,6 +204,35 @@ def test_solution_steps_carry_selected_cube():
     assert any(step["selected"] is not None for step in steps)
 
 
+def test_stage_list_and_select_stage():
+    scene, controller = make_scene_view(), GameController(stages())
+    scene.bind_controller(controller)
+    connect_events(scene, controller)
+    reply = scene.bridge.handle_client_event("stage_list", {})
+    assert reply["current"] == 0 and reply["commands"] == []
+    assert reply["stages"][2] == {"index": 2, "id": "fixture_split", "name": "FIXTURE_SPLIT", "group": "G3"}
+    reply = scene.bridge.handle_client_event("select_stage", {"index": 2})
+    assert controller.index == 2 and [c["type"] for c in reply["commands"]] == ["load_stage"]
+    for bad in (5, -1, "1", True, None):
+        assert scene.bridge.handle_client_event("select_stage", {"index": bad})["commands"] == []
+    assert controller.index == 2
+
+
+def test_stage_name():
+    from bloxorz.gui.app import stage_name
+
+    assert stage_name("stage_05") == "STAGE 5" and stage_name("custom_g4_split") == "CUSTOM_G4_SPLIT"
+
+
+def test_select_stage_during_solve_drops_old_result():
+    scene, controller, release, worker, replies = start_slow_solve()
+    scene.bridge.handle_client_event("select_stage", {"index": 1})
+    release.set()
+    worker.join(5)
+    assert controller.stage.id == "fixture_fragile" and controller.moves == 0
+    assert commands_of(replies[0]) == []  # request giải cũ không gửi lệnh vẽ nào
+
+
 def test_stage_navigation_wraps_around(router):
     router.handle("prev_stage", {})
     assert router.controller.index == 2 and router.scene.events[-1] == ("load", "fixture_split")
@@ -307,42 +336,50 @@ def start_slow_solve(algorithm="bfs"):
         return run(name, stage)
 
     router.run_fn = slow
-    worker = threading.Thread(target=scene.bridge.handle_client_event, args=("solve_ai", {"algorithm": algorithm}))
+    replies = []  # phản hồi của request giải cũ: chính nó mang lệnh vẽ (handle_client_event tự lấy hết hàng đợi)
+    worker = threading.Thread(target=lambda: replies.append(
+        scene.bridge.handle_client_event("solve_ai", {"algorithm": algorithm})))
     worker.start()
     assert started.wait(5)
-    return scene, controller, release, worker
+    return scene, controller, release, worker, replies
+
+
+def commands_of(reply):
+    return [c["type"] for c in reply["commands"]]
 
 
 def test_stage_change_during_solve_drops_old_result(capsys):
     # Bridge xử lý mỗi request trên 1 luồng: đổi màn khi solver của màn cũ chưa xong
-    scene, controller, release, worker = start_slow_solve()
+    scene, controller, release, worker, replies = start_slow_solve()
     scene.bridge.handle_client_event("next_stage", {})
     release.set()
     worker.join(5)
     assert controller.stage.id == "fixture_fragile"
     assert controller.status == "playing" and controller.moves == 0  # lời giải của basic không được đi trên fragile
-    assert all(c["type"] != "play_solution" for c in scene.bridge.drain_commands())
+    assert commands_of(replies[0]) == []  # request giải cũ không gửi lệnh vẽ nào
     assert "Bỏ kết quả bfs của màn fixture_basic" in capsys.readouterr().out
 
 
 def test_newer_solve_replaces_older_one():
-    scene, controller, release, worker = start_slow_solve("bfs")
+    scene, controller, release, worker, replies = start_slow_solve("bfs")
     reply = scene.bridge.handle_client_event("solve_ai", {"algorithm": "astar"})  # lượt mới chạy xong trước
     played = [c for c in reply["commands"] if c["type"] == "play_solution"]
     assert played[-1]["payload"]["solver"]["algorithm"] == "A*"
+    moves_after_astar = controller.moves
     release.set()
     worker.join(5)
-    assert all(c["type"] != "play_solution" for c in scene.bridge.drain_commands())  # lượt bfs cũ bị bỏ
-    assert controller.status == "won"
+    assert commands_of(replies[0]) == []  # lượt bfs cũ bị bỏ: không load_stage, không play_solution
+    assert controller.status == "won" and controller.moves == moves_after_astar  # controller không bị đi lại
 
 
 def test_restart_during_solve_keeps_result():
     # cùng màn: lời giải vẫn hợp lệ vì luôn phát lại từ đầu màn
-    scene, controller, release, worker = start_slow_solve()
+    scene, controller, release, worker, replies = start_slow_solve()
     scene.bridge.handle_client_event("restart", {})
     release.set()
     worker.join(5)
     assert controller.status == "won" and controller.stage.id == "fixture_basic"
+    assert commands_of(replies[0]) == ["load_stage", "play_solution"]
 
 
 def test_index_locks_requests_while_solving():
@@ -391,38 +428,72 @@ const elements = {};
 function el(id) {
   if (!elements[id]) {
     const classes = new Set();
-    elements[id] = { id, innerText: "", style: {}, classList: {
-      add: (c) => classes.add(c), remove: (c) => classes.delete(c),
-      toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)), has: (c) => classes.has(c) } };
+    elements[id] = { id, innerText: "", innerHTML: "", value: "", dataset: {}, handlers: {},
+      style: { setProperty(k, v) { this[k] = v; } },
+      addEventListener(type, fn) { this.handlers[type] = fn; },
+      classList: {
+        add: (c) => classes.add(c), remove: (c) => classes.delete(c),
+        toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)), contains: (c) => classes.has(c), has: (c) => classes.has(c) } };
   }
   return elements[id];
 }
 let inserted = 0;
+const bodyClasses = new Set();
 global.document = {
-  body: { insertAdjacentHTML: () => { inserted += 1; } },
-  querySelector: () => (inserted ? {} : null),
+  body: { insertAdjacentHTML: () => { inserted += 1; },
+          classList: { add: (c) => bodyClasses.add(c), remove: (c) => bodyClasses.delete(c),
+                       toggle: (c, on) => (on ? bodyClasses.add(c) : bodyClasses.delete(c)) } },
+  querySelector: (sel) => (sel === ".ui-layer" && inserted ? {} : null),
+  querySelectorAll: () => [],
   getElementById: el,
 };
 global.window = global;
+const windowHandlers = {};
+window.addEventListener = (type, fn) => { windowHandlers[type] = fn; };
+global.requestAnimationFrame = () => 1;
+global.cancelAnimationFrame = () => {};
+const store = {};
+global.localStorage = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
+const posted = [];
+global.fetch = async (url, init) => {
+  const { event, payload } = JSON.parse(init.body);
+  posted.push(payload && payload.index !== undefined ? `${event}:${payload.index}` : event);
+  const stages = ["G1", "G3", "G1", "G2"].map((group, index) => ({ index, id: `stage_0${index + 1}`, name: `STAGE ${index + 1}`, group }));
+  return { json: async () => (event === "stage_list" ? { ok: true, stages, current: 0, commands: [] } : { ok: true, commands: [] }) };
+};
+
+(async () => {
 require(path);
 window.BloxorzHud.mount();  // gọi lại: không chèn lần 2
+const M = window.BloxorzMenu;
 
 const calls = [];
-const client = { isProcessing: false, isAutoPlaying: false };
+const client = { isProcessing: false, isAutoPlaying: false, cmdQueue: [] };
 for (const m of ["requestAction", "requestUndo", "requestRestart", "requestNextStage", "requestPrevStage", "requestAISolve"]) {
   client[m] = (arg) => calls.push(arg === undefined ? m : `${m}:${arg}`);
 }
 const key = (k) => { let prevented = false; const handled = window.BloxorzInput.handleKey({ key: k, preventDefault: () => { prevented = true; } }, client); return [handled, prevented]; };
 
 const H = window.BloxorzHud;
+H.markBiome("nether");                 // cảnh tự đặt biome lúc tải trang: chưa lưu
+const biomeBeforeBoot = M.settings.biome;
+await windowHandlers.load();           // boot: lấy danh sách màn
+const menu = { openAtStart: M.isOpen(), stagesLoaded: M.stages.length, playText: el("menu-play").innerText,
+               levelsHtml: el("level-groups").innerHTML, biomeBeforeBoot };
+menu.keyWhileOpen = key("d");          // menu mở: không chơi
 H.updateStats("STAGE 2", 2, 5, 7);
 H.updateStats("", 3, 5, 8);
 H.setMoves(9);
 H.markBiome("nether");
+menu.biomeAfterBoot = JSON.parse(store["bloxorz.settings.v1"]).biome;
+menu.lastStage = JSON.parse(store["bloxorz.settings.v1"]).lastStage;
 H.showSolver(undefined);
 const badgeBefore = el("ui-ai-badge").style.display;
 H.showSolver({ algorithm: "BFS", status: "solved", moves: 7, cost: 7, execution_time_ms: 3, nodes_expanded: 48 });
 const badgeText = el("ui-ai-badge").innerText, badgeShown = el("ui-ai-badge").style.display;
+el("ui-moves").innerText = "4";
+H.afterWin(client);                    // AI thắng: không tính tiến trình
+menu.progressAfterAiWin = store["bloxorz.progress.v1"] || null;
 H.showSolver({ algorithm: "A*", status: "timeout", status_text: "quá thời gian", nodes_expanded: 900 });
 const badgeFail = el("ui-ai-badge").innerText;
 H.hideSolver();
@@ -430,7 +501,28 @@ H.setSelected(1); const cubeText = el("ui-cube").innerText, cubeShown = el("ui-c
 H.setSelected(null); const cubeHidden = el("ui-cube").style.display;
 H.showBanner(); const bannerShown = el("banner-msg").classList.has("show");
 H.hideBanner();
-H.afterWin(client);
+el("ui-moves").innerText = "9";
+H.afterWin(client);                    // tự chơi thắng màn 3 với 9 bước
+el("ui-moves").innerText = "12";
+H.afterWin(client);                    // thắng lại nhiều bước hơn: giữ số bước tốt nhất
+menu.progress = JSON.parse(store["bloxorz.progress.v1"]);
+
+M.setVolume(40, false);
+menu.savedVolume = JSON.parse(store["bloxorz.settings.v1"]).volume;
+menu.volumeLabel = el("set-volume-label").innerText;
+M.setMuted(true);
+menu.mutedLabel = el("set-volume-label").innerText;
+M.setShowHelp(false);
+menu.hideHelp = bodyClasses.has("hide-help");
+
+menu.escClose = key("Escape");
+menu.openAfterEsc = M.isOpen();
+menu.pauseText = (key("Escape"), el("menu-play").innerText);
+key("Escape");
+M.selectStage(2);                      // chưa có cảnh 3D (SceneBridge): bỏ qua
+window.SceneBridge = client;
+M.selectStage(2);
+menu.posted = posted;
 
 const keys = {};
 for (const k of ["ArrowLeft", "a", "D", "w", "s", "u", "r", "n", "p", " ", "G", "x"]) keys[k] = key(k);
@@ -442,8 +534,9 @@ console.log(JSON.stringify({
   inserted, stageName: el("ui-stage-name").innerText, stage: el("ui-stage").innerText, moves: el("ui-moves").innerText,
   nether: el("btn-nether").classList.has("active"), overworld: el("btn-overworld").classList.has("active"),
   badgeBefore, badgeText, badgeShown, badgeFail, badgeAfter: el("ui-ai-badge").style.display,
-  bannerShown, bannerAfter: el("banner-msg").classList.has("show"), calls, keys, cubeText, cubeShown, cubeHidden,
+  bannerShown, bannerAfter: el("banner-msg").classList.has("show"), calls, keys, cubeText, cubeShown, cubeHidden, menu,
 }));
+})();
 """
 
 
@@ -462,7 +555,7 @@ def hud_run(tmp_path_factory):
 def test_hud_mounts_once_and_updates_stats(hud_run):
     assert hud_run["inserted"] == 1
     assert hud_run["stageName"] == "STAGE 2"  # tên rỗng thì giữ tên cũ
-    assert hud_run["stage"] == "3/5" and hud_run["moves"] == 9
+    assert hud_run["stage"] == "3/5"
 
 
 def test_hud_biome_badge_banner(hud_run):
@@ -502,12 +595,40 @@ def test_gameplay_keys(hud_run):
     assert keys["blocked"] == [False, False] and keys["blocked2"] == [False, False]  # đang diễn hoạt / phát lời giải
     assert keys["blocked3"] == [False, False]  # đang chờ solver: không đổi màn được
     assert hud_run["calls"] == [
-        "requestNextStage",  # afterWin: thắng xong tự sang màn sau
+        "requestNextStage", "requestNextStage", "requestNextStage",  # afterWin: thắng xong tự sang màn sau
         "requestAction:LEFT", "requestAction:LEFT", "requestAction:RIGHT", "requestAction:UP", "requestAction:DOWN",
         "requestUndo", "requestRestart", "requestNextStage", "requestPrevStage",
         "requestAction:SWITCH",  # Space: đổi khối khi tách
         "requestAISolve:astar",  # G: giải A*
     ]
+
+
+def test_menu_starts_open_and_blocks_play(hud_run):
+    menu = hud_run["menu"]
+    assert menu["openAtStart"] and menu["keyWhileOpen"] == [False, False]
+    assert menu["stagesLoaded"] == 4 and menu["playText"] == "Bắt đầu"
+    assert 'data-level="3"' in menu["levelsHtml"] and "Ô dễ vỡ" in menu["levelsHtml"]  # nhóm theo G1..G5
+
+
+def test_menu_escape_toggles_pause(hud_run):
+    menu = hud_run["menu"]
+    assert menu["escClose"] == [True, True] and menu["openAfterEsc"] is False
+    assert menu["pauseText"] == "Tiếp tục"
+    assert menu["posted"] == ["stage_list", "select_stage:2"]
+
+
+def test_menu_progress_counts_only_manual_wins(hud_run):
+    menu = hud_run["menu"]
+    assert menu["progressAfterAiWin"] is None
+    assert menu["progress"] == {"stage_03": 9}  # giữ số bước tốt nhất
+    assert menu["lastStage"] == 2
+
+
+def test_menu_settings_saved(hud_run):
+    menu = hud_run["menu"]
+    assert menu["biomeBeforeBoot"] == "overworld" and menu["biomeAfterBoot"] == "nether"
+    assert menu["savedVolume"] == 40 and menu["volumeLabel"] == "ÂM LƯỢNG: 40%"
+    assert menu["mutedLabel"] == "ÂM LƯỢNG: TẮT" and menu["hideHelp"] is True
 
 
 def test_bridge_serves_only_vt4_web_assets():
