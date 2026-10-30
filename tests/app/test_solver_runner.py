@@ -137,7 +137,8 @@ def test_apply_action_moves_requested_cube():
     game.state = State(None, (2, 0), (2, 3))
     assert apply_action(game, scene, Action(Direction.RIGHT, cube=1)) == "moved"
     assert game.last_action == Action(Direction.RIGHT, cube=1)
-    assert game.state.cube2 == (2, 4) and scene.events[-1][0] == "move"
+    assert game.state.cube2 == (2, 4) and scene.events[-2][0] == "move"
+    assert scene.events[-1] == ("selected", 1)  # scene tô sáng cube vừa đi
 
 
 def test_replayer_waits_for_animation_and_delay():

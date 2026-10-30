@@ -8,6 +8,7 @@ Chương trình mô phỏng game giải đố Bloxorz 3D bằng Python, hỗ tr�
 ## 🛠️ Yêu Cầu Môi Trường
 - **Python**: 3.12 (khuyến nghị) hoặc 3.13.
 - **Hệ điều hành**: Windows / Linux / macOS.
+- **Trình duyệt** hỗ trợ WebGL (Chrome, Edge, Firefox, Safari) để hiển thị cảnh 3D.
 
 ---
 
@@ -36,11 +37,55 @@ cd bloxorz-solver
   ```
 
 ### 3. Kiểm tra môi trường với Pytest
-Chạy lệnh kiểm tra test đầu tiên (smoke test):
 ```bash
 pytest -q
 ```
-Kết quả mong đợi: `1 passed in ...s`.
+Kết quả mong đợi: tất cả test đều `passed`.
+
+---
+
+## 🎮 Chạy Ứng Dụng
+
+```bash
+python main.py                                      # chơi 33 màn gốc, bắt đầu từ màn 1
+python main.py --stage stage_05                     # chơi 33 màn gốc, bắt đầu từ màn stage_05
+python main.py --stages-dir stages/custom           # chơi các màn trong 1 thư mục khác
+python main.py --stage stages/fixtures/split.json   # chỉ chơi đúng 1 file màn
+python main.py --stages-dir stages/fixtures --text  # chơi trong terminal, không cần đồ họa
+```
+
+| Tham số | Ý nghĩa |
+| :--- | :--- |
+| `--stages-dir <thư mục>` | Thư mục chứa các file màn `*.json` (mặc định `stages/original`) |
+| `--stage <id hoặc file>` | Màn bắt đầu: id màn trong thư mục (vd. `stage_05`) hoặc đường dẫn tới 1 file `.json` |
+| `--text` | Chơi trong terminal thay vì cảnh 3D |
+
+- Cảnh 3D chạy bằng WebGL (Three.js). Nếu máy đã cài `pywebview` (`pip install pywebview`) thì mở trong cửa sổ riêng; nếu chưa thì tự mở trong trình duyệt mặc định. Dừng chương trình bằng `Ctrl+C` trong terminal.
+- Khi nạp cả thư mục màn: thắng xong tự sang màn tiếp theo; `N` / `P` để đổi màn, đi quá màn cuối thì quay về màn đầu.
+
+### Điều khiển
+
+| Phím | Tác dụng |
+| :--- | :--- |
+| `↑ ↓ ← →` / `W A S D` | Lăn khối |
+| `Space` | Đổi khối đang điều khiển khi khối đã tách đôi |
+| `U` | Lùi 1 bước |
+| `R` | Chơi lại màn |
+| `N` / `P` | Màn sau / màn trước |
+| `G` | Giải màn hiện tại bằng A\* |
+| `1` / `2` / `3` | Đổi khung cảnh (Overworld / Nether / End) |
+| `C` / `T` | Camera về góc mặc định / nhìn từ trên xuống |
+| `Q` / `E` | Xoay camera 45° |
+
+Ở chế độ `--text`, gõ phím rồi Enter (có thể gõ nhiều phím một lần, vd. `ddw`): `W/A/S/D` lăn khối, dấu cách đổi khối khi tách, `U` lùi, `R` chơi lại, `N/P` đổi màn, `Q` thoát.
+
+### Giải tự động bằng AI
+Bấm nút **A\***, **BFS**, **DFS** hoặc **UCS** trên màn hình (hoặc phím `G` cho A\*). Chương trình giải màn hiện tại từ vị trí xuất phát rồi phát lại lời giải từng bước. Góc màn hình hiện kết quả:
+
+```
+A*: 12 MOVES | COST 12 | 3.5ms | 140 NODES      # có lời giải: số bước, chi phí, thời gian, số nút đã mở rộng
+DFS: QUÁ THỜI GIAN | 90000 NODES                # không giải được: lý do (không có lời giải / quá thời gian / lỗi)
+```
 
 ---
 
@@ -59,13 +104,22 @@ bloxorz-solver/
 │   ├── verify.py              # Kiểm tra tính hợp lệ của đường đi nghiệm (VT1)
 │   ├── engine/                # Luật chuyển động và cơ chế game (VT2)
 │   ├── search/                # Các giải thuật tìm kiếm BFS, DFS, UCS, A* (VT1, VT5)
-│   └── gui/                   # Giao diện người dùng & cảnh 3D Ursina (VT3, VT4)
+│   └── gui/                   # Giao diện người dùng
+│       ├── app.py             # Khởi chạy ứng dụng, xử lý sự kiện từ cảnh 3D (VT4)
+│       ├── controller.py      # Trạng thái ván chơi: lăn, lùi, chơi lại, đổi màn, đổi khối (VT4)
+│       ├── solver_runner.py   # Gọi solver và chuẩn bị lời giải để phát lại (VT4)
+│       ├── fake_scene.py      # Chế độ chơi trong terminal (VT4)
+│       ├── web/               # Thanh thông tin, nút bấm và phím chơi trên cảnh 3D (VT4)
+│       └── scene/             # Cảnh 3D WebGL Three.js và cầu nối Python ↔ trình duyệt (VT3)
 ├── stages/                    # Dữ liệu các màn chơi
 │   ├── fixtures/              # Màn mẫu cơ bản dùng cho unit test (VT4)
 │   ├── original/              # 33 màn gốc chuyển đổi (VT4)
+│   ├── custom/                # Màn tự thiết kế
 │   └── bench/                 # Bộ màn thực nghiệm G1-G5 (VT5)
 ├── benchmark/                 # Công cụ đo đạc thực nghiệm (VT1, VT5)
 ├── results/                   # Bảng số liệu và đồ thị kết quả (VT1, VT5)
+├── tools/
+│   └── convert_quick_bloxorz.py  # Chuyển 33 màn gốc sang định dạng JSON của nhóm (VT4)
 └── tests/                     # Hệ thống kiểm thử tự động với pytest
 ```
 
@@ -99,4 +153,16 @@ Mỗi màn là 1 file `.json` (UTF-8). Đặc tả đầy đủ nằm ở docstr
 from bloxorz.loader import load_stage, load_stages
 stage = load_stage("stages/fixtures/basic.json")   # ném StageFormatError nếu file sai, kèm danh sách mọi lỗi
 stages = load_stages("stages/original")
+```
+
+Muốn tự tạo màn mới: viết file `.json` theo định dạng trên vào `stages/custom/` rồi chạy `python main.py --stages-dir stages/custom`. File sai định dạng sẽ bị báo lỗi kèm vị trí cụ thể khi nạp.
+
+---
+
+## 📜 Nguồn Dữ Liệu Màn Chơi
+33 màn trong `stages/original/` được chuyển đổi từ [Quick Bloxorz](https://github.com/jgordon510/quick_bloxorz) của Jeffrey Gordon (giấy phép CC BY) bằng `tools/convert_quick_bloxorz.py`:
+
+```bash
+git clone https://github.com/jgordon510/quick_bloxorz /tmp/quick_bloxorz
+python tools/convert_quick_bloxorz.py /tmp/quick_bloxorz/maps --out stages/original
 ```

@@ -12,11 +12,12 @@ from __future__ import annotations
 from typing import Literal, Sequence
 
 from bloxorz.engine import initial_state, is_goal, step
-from bloxorz.model import Action, Direction, State
+from bloxorz.model import Action, Direction, Pos, State
 from bloxorz.stage import Stage
 
 Status = Literal["playing", "won", "fell"]
 Outcome = Literal["moved", "won", "fell", "ignored"]
+SplitEvent = Literal["split", "merge"]
 
 # Tên phím theo Ursina; chế độ chữ dùng chung các chữ cái w/a/s/d
 KEY_DIRECTIONS: dict[str, Direction] = {
@@ -41,8 +42,14 @@ class GameController:
     - play(action): như move() nhưng nhận Action của solver (chọn đúng cube khi tách).
     - restart(), undo(), next_stage(), prev_stage(), load(index).
     - Sau khi thắng/rơi, mọi nước đi bị bỏ qua cho tới khi restart/undo/chuyển màn.
-    - Khi khối đã tách (state.pose is None): nước đi điều khiển cube active_cube (0 hoặc 1),
-      switch_cube() (phím Space) đổi cube đang chọn.
+    - Khi khối đã tách (state.pose is None): nhớ cube đang chọn theo VỊ TRÍ ô (selected_pos), không theo số
+      0/1, vì State luôn sắp 2 cube theo pos < cube2 nên số thứ tự có thể đổi sau mỗi nước.
+      - Nước đi sinh event "split": chọn cube ở state.pos.
+      - switch_cube() (phím Space): chọn cube còn lại; không tính là 1 nước đi.
+      - Phím hướng: lăn cube đang chọn (Action.cube = active_cube); nếu vẫn đang tách thì chọn tiếp
+        vị trí mới của cube vừa đi (ô khác vị trí cube đứng yên).
+      - Event "merge": selected_pos = None.
+      last_event cho biết nước vừa đi có "split" / "merge" hay không.
     """
 
     def __init__(self, stages: Sequence[Stage], index: int = 0):
@@ -64,41 +71,56 @@ class GameController:
         self.state: State = initial_state(self.stage)
         self.status: Status = "playing"
         self.moves = 0
-        self.history: list[tuple[State, int]] = []  # (state, active_cube) trước mỗi nước đi
+        self.history: list[tuple[State, Pos | None]] = []  # (state, selected_pos) trước mỗi nước đi
         self.last_action: Action | None = None
-        self.active_cube = 0
+        self.last_event: SplitEvent | None = None
+        self.selected_pos: Pos | None = None
 
     @property
     def is_split(self) -> bool:
         return self.state.pose is None
 
+    @property
+    def active_cube(self) -> int:
+        """Chỉ số cube đang chọn trong state hiện tại (0 = state.pos, 1 = state.cube2); 0 khi chưa tách."""
+        if not self.is_split:
+            return 0
+        return 1 if self.selected_pos == self.state.cube2 else 0
+
     def switch_cube(self) -> bool:
-        """Đổi cube đang điều khiển. Trả False nếu khối chưa tách."""
+        """Chọn cube còn lại (không tính là 1 nước đi). Trả False nếu khối chưa tách."""
         if not self.is_split:
             return False
-        self.active_cube = 1 - self.active_cube
+        self.selected_pos = self.state.pos if self.active_cube == 1 else self.state.cube2
         return True
 
     def move(self, direction: Direction) -> Outcome:
         if self.status != "playing":
             return "ignored"
-        action = Action(direction, cube=self.active_cube if self.is_split else None)
+        was_split = self.is_split
+        action = Action(direction, cube=self.active_cube if was_split else None)
         # Cube đứng yên trong nước này (chỉ dùng khi đang tách)
-        still = (self.state.cube2 if self.active_cube == 0 else self.state.pos) if self.is_split else None
+        still = (self.state.cube2 if self.active_cube == 0 else self.state.pos) if was_split else None
         self.last_action = action
+        self.last_event = None
         self.moves += 1
         new = step(self.state, action, self.stage)
         if new is None:
             # Giữ nguyên state trước khi rơi để scene vẽ hoạt ảnh rơi từ đúng chỗ
             self.status = "fell"
             return "fell"
-        self.history.append((self.state, self.active_cube))
+        self.history.append((self.state, self.selected_pos))
         self.state = new
-        if new.pose is None:
-            # State luôn chuẩn hóa pos < cube2 nên viên vừa đi có thể bị đổi chỗ sang cube2:
-            # chọn lại đúng viên vừa đi để nước sau không "nhảy khối".
-            # Vừa tách từ khối nguyên (still is None) thì chọn cube 0.
-            self.active_cube = 1 if new.pos == still else 0
+        if new.pose is None and not was_split:
+            self.last_event = "split"
+            self.selected_pos = new.pos
+        elif new.pose is None:
+            # vẫn tách: cube vừa đi là ô khác vị trí cube đứng yên
+            self.selected_pos = new.cube2 if new.pos == still else new.pos
+        else:
+            if was_split:
+                self.last_event = "merge"
+            self.selected_pos = None
         if is_goal(new, self.stage):
             self.status = "won"
             return "won"
@@ -107,7 +129,7 @@ class GameController:
     def play(self, action: Action) -> Outcome:
         """Đi đúng 1 Action có sẵn (vd. 1 bước trong lời giải của solver), kể cả chỉ số cube khi tách."""
         if self.is_split and action.cube is not None:
-            self.active_cube = action.cube
+            self.selected_pos = self.state.pos if action.cube == 0 else self.state.cube2
         return self.move(action.direction)
 
     def undo(self) -> bool:
@@ -118,7 +140,8 @@ class GameController:
             return True
         if not self.history:
             return False
-        self.state, self.active_cube = self.history.pop()
+        self.state, self.selected_pos = self.history.pop()
+        self.last_event = None
         self.status = "playing"
         self.moves -= 1
         return True

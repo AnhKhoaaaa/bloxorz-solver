@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLOXORZ: VOXEL EDITION - Clean Architecture &amp; Three.js Engine</title>
+    <!-- Google Font Pixel: Press Start 2P -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- Three.js r128 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #111;
+            font-family: 'Press Start 2P', monospace;
+            image-rendering: pixelated;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+    </style>
+    <!-- Giao diện 2D (VT4): bloxorz/gui/web/hud.css -->
+    <link rel="stylesheet" href="bloxorz/gui/web/hud.css">
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- Giao diện 2D + phím chơi tay (VT4): bloxorz/gui/web/hud.js dựng lớp giao diện tại đây -->
+<script src="bloxorz/gui/web/hud.js"></script>
+
+<script>
+/**
+ * ============================================================================
+ * 1. HỆ THỐNG ÂM THANH NỘI SINH WEB AUDIO API (PROCEDURAL SOUND SYNTHESIZER)
+ * ============================================================================
+ */
+class SoundFX {
+    constructor() {
+        this.ctx = null;
+        this.master = null;
+        this._unlocked = false;
+
+        const unlock = () => {
+            this.init();
+            if (this.ctx && this.ctx.state === 'suspended') {
+                this.ctx.resume().catch(() => {});
+            }
+        };
+        ['click', 'keydown', 'pointerdown', 'touchstart', 'mousedown', 'focus'].forEach(evt => {
+            window.addEventListener(evt, unlock, { passive: true });
+        });
+    }
+
+    init() {
+        if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+                this.ctx = new AudioCtx();
+                this.master = this.ctx.createGain();
+                this.master.gain.setValueAtTime(0.85, this.ctx.currentTime);
+                this.master.connect(this.ctx.destination);
+            }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+        }
+    }
+
+    playStep(isStanding) {
+        this.init();
+        if (!this.ctx) return;
+        const now = Math.max(0.005, this.ctx.currentTime);
+        const dest = this.master || this.ctx.destination;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        const baseFreq = isStanding ? 120 : 150;
+        osc.frequency.setValueAtTime(baseFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(38, now + 0.09);
+
+        gain.gain.setValueAtTime(0.55, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.095);
+
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.start(now);
+        osc.stop(now + 0.1);
+
+        const bufferSize = Math.floor(this.ctx.sampleRate * 0.045);
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.35));
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(isStanding ? 950 : 1250, now);
+        filter.Q.setValueAtTime(2.5, now);
+
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(0.35, now);
+        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.045);
+
+        noise.connect(filter);
+        filter.connect(nGain);
+        nGain.connect(dest);
+        noise.start(now);
+    }
+
+    playSwitch() {
+        this.init();
+        if (!this.ctx) return;
+        const now = Math.max(0.005, this.ctx.currentTime);
+        const dest = this.master || this.ctx.destination;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(750, now);
+        osc.frequency.setValueAtTime(1150, now + 0.025);
+
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.start(now);
+        osc.stop(now + 0.08);
+    }
+
+    playFall() {
+        this.init();
+        if (!this.ctx) return;
+        const now = Math.max(0.005, this.ctx.currentTime);
+        const dest = this.master || this.ctx.destination;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(42, now + 0.65);
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(900, now);
+        filter.frequency.linearRampToValueAtTime(120, now + 0.65);
+
+        gain.gain.setValueAtTime(0.45, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(dest);
+        osc.start(now);
+        osc.stop(now + 0.68);
+    }
+
+    playWin() {
+        this.init();
+        if (!this.ctx) return;
+        const now = Math.max(0.005, this.ctx.currentTime);
+        const dest = this.master || this.ctx.destination;
+        const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98];
+        notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = idx % 2 === 0 ? 'triangle' : 'sine';
+            const start = now + idx * 0.085;
+            osc.frequency.setValueAtTime(freq, start);
+
+            gain.gain.setValueAtTime(0.001, start);
+            gain.gain.linearRampToValueAtTime(0.35, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0008, start + 0.75);
+
+            osc.connect(gain);
+            gain.connect(dest);
+            osc.start(start);
+            osc.stop(start + 0.78);
+        });
+    }
+}
+
+const SFX = new SoundFX();
+
+/**
+ * ============================================================================
+ * 2. GENERATOR TEXTURE PROCEDURAL 16x16 PIXEL CHUẨN MINECRAFT (NEAREST FILTER)
+ * ============================================================================
+ */
+class VoxelTextures {
+    static createCanvasTexture(drawFn) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 16;
+        canvas.height = 16;
+        const ctx = canvas.getContext('2d');
+        drawFn(ctx, 16, 16);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.magFilter = THREE.NearestFilter;
+        texture.minFilter = THREE.NearestFilter;
+        texture.generateMipmaps = false;
+        texture.needsUpdate = true;
+        return { texture, canvas, ctx };
+    }
+
+    static oakBark() {
+        return this.createCanvasTexture((ctx) => {
+            const cols = ['#5c4328', '#4e3820', '#6b4e30', '#3f2d18'];
+            for (let x = 0; x < 16; x++) {
+                const stripe = cols[(x * 3) % cols.length];
+                for (let y = 0; y < 16; y++) {
+                    const n = ((x * 17 + y * 31) % 7 === 0) ? '#3b2915' :
+                              ((x * 13 + y * 7) % 5 === 0) ? '#735536' : stripe;
+                    ctx.fillStyle = n;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }).texture;
+    }
+
+    static oakTop() {
+        return this.createCanvasTexture((ctx) => {
+            for (let y = 0; y < 16; y++) {
+                for (let x = 0; x < 16; x++) {
+                    const dist = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+                    if (dist >= 6.5) {
+                        ctx.fillStyle = (x + y) % 2 === 0 ? '#5c4328' : '#4a351e';
+                    } else if (Math.round(dist) % 2 === 0) {
+                        ctx.fillStyle = '#b8945f';
+                    } else {
+                        ctx.fillStyle = '#9e7c4a';
+                    }
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }).texture;
+    }
+
+    static stoneBricks() {
+        return this.createCanvasTexture((ctx) => {
+            for (let y = 0; y < 16; y++) {
+                for (let x = 0; x < 16; x++) {
+                    const isHorizontalGroove = (y === 0 || y === 8);
+                    const isVerticalGroove = (y < 8 && x === 8) || (y >= 8 && (x === 0 || x === 15));
+                    if (isHorizontalGroove || isVerticalGroove) {
+                        ctx.fillStyle = '#38383c';
+                    } else {
+                        const isHighlight = (y === 1 || y === 9 || (y < 8 && x === 9) || (y >= 8 && x === 1));
+                        const hash = (x * 37 + y * 73) % 19;
+                        if (hash === 0 || hash === 1) {
+                            ctx.fillStyle = '#4f7835';
+                        } else if (hash === 2) {
+                            ctx.fillStyle = '#658f46';
+                        } else if (isHighlight) {
+                            ctx.fillStyle = '#96969e';
+                        } else {
+                            const shades = ['#7a7a82', '#707078', '#83838c', '#686870'];
+                            ctx.fillStyle = shades[(x * 11 + y * 23) % shades.length];
+                        }
+                    }
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }).texture;
+    }
+
+    static cryingObsidian() {
+        return this.createCanvasTexture((ctx) => {
+            for (let y = 0; y < 16; y++) {
+                for (let x = 0; x < 16; x++) {
+                    const hash = (x * 43 + y * 19) % 23;
+                    if (hash === 0) ctx.fillStyle = '#d96bff';
+                    else if (hash === 1 || hash === 2) ctx.fillStyle = '#9922ff';
+                    else if (hash === 3) ctx.fillStyle = '#4c127a';
+                    else {
+                        const base = ['#181026', '#211536', '#110b1c', '#2b1b47'];
+                        ctx.fillStyle = base[(x * 7 + y * 13) % base.length];
+                    }
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }).texture;
+    }
+
+    static fragileSand() {
+        return this.createCanvasTexture((ctx) => {
+            const palette = ['#d67229', '#c2611d', '#e08338', '#ab5012'];
+            for (let y = 0; y < 16; y++) {
+                for (let x = 0; x < 16; x++) {
+                    const isCrack = (x === y && x > 2 && x < 13) || (x + y === 15 && x > 4 && x < 12);
+                    if (isCrack) {
+                        ctx.fillStyle = '#592305';
+                    } else {
+                        ctx.fillStyle = palette[(x * 29 + y * 41) % palette.length];
+                    }
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }).texture;
+    }
+
+    static oakTrapdoor() {
+        return this.createCanvasTexture((ctx) => {
+            for (let y = 0; y < 16; y++) {
+                for (let x = 0; x < 16; x++) {
+                    const isBorder = x < 3 || x > 12 || y < 3 || y > 12;
+                    const isCrossBar = x === 7 || x === 8 || y === 7 || y === 8;
+                    if (isBorder || isCrossBar) {
+                        ctx.fillStyle = (x + y) % 3 === 0 ? '#8c693e' : '#a37b49';
+                        if (x === 0 || y === 0 || x === 15 || y === 15) ctx.fillStyle = '#5c4328';
+                    } else {
+                        ctx.fillStyle = '#291d12';
+                    }
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+            ctx.fillStyle = '#4a4a52';
+            ctx.fillRect(1, 3, 2, 2);
+            ctx.fillRect(1, 11, 2, 2);
+        }).texture;
+    }
+
+    static ironSlab() {
+        return this.createCanvasTexture((ctx) => {
+            for (let y = 0; y < 16; y++) {
+                for (let x = 0; x < 16; x++) {
+                    const border = x === 0 || y === 0 || x === 15 || y === 15;
+                    const inner = x === 1 || y === 1 || x === 14 || y === 14;
+                    if (border) {
+                        ctx.fillStyle = '#a4a4b4';
+                    } else if (inner) {
+                        ctx.fillStyle = '#ffffff';
+                    } else {
+                        ctx.fillStyle = (x + y) % 2 === 0 ? '#f5f5fc' : '#e6e6f0';
+                    }
+                    if ((x === 2 || x === 13) && (y === 2 || y === 13)) ctx.fillStyle = '#7a7a8a';
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }).texture;
+    }
+
+    static goldenSlab() {
+        return this.createCanvasTexture((ctx) => {
+            for (let y = 0; y < 16; y++) {
+                for (let x = 0; x < 16; x++) {
+                    const border = x === 0 || y === 0 || x === 15 || y === 15;
+                    const inner = x === 1 || y === 1 || x === 14 || y === 14;
+                    if (border) {
+                        ctx.fillStyle = '#b8860b';
+                    } else if (inner) {
+                        ctx.fillStyle = '#ffea60';
+                    } else {
+                        ctx.fillStyle = (x + y) % 2 === 0 ? '#ffd700' : '#ffc400';
+                    }
+                    if ((x === 2 || x === 13) && (y === 2 || y === 13)) ctx.fillStyle = '#fffca8';
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }).texture;
+    }
+
+    static pressurePlate(isHeavy) {
+        return this.createCanvasTexture((ctx) => {
+            for (let y = 0; y < 16; y++) {
+                for (let x = 0; x < 16; x++) {
+                    const border = x === 0 || y === 0 || x === 15 || y === 15;
+                    if (isHeavy) {
+                        ctx.fillStyle = border ? '#686870' : ((x + y) % 2 === 0 ? '#d8d8e2' : '#c4c4cf');
+                        if ((x === 2 || x === 13) && (y === 2 || y === 13)) ctx.fillStyle = '#44444a';
+                    } else {
+                        ctx.fillStyle = border ? '#6e502d' : ((y % 4 === 0) ? '#997243' : '#b58852');
+                        if ((x === 2 || x === 13) && (y === 2 || y === 13)) ctx.fillStyle = '#4f381f';
+                    }
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }).texture;
+    }
+
+    static endFrameTop() {
+        return this.createCanvasTexture((ctx) => {
+            for (let y = 0; y < 16; y++) {
+                for (let x = 0; x < 16; x++) {
+                    const isOuter = x < 3 || x > 12 || y < 3 || y > 12;
+                    if (isOuter) {
+                        ctx.fillStyle = (x + y) % 2 === 0 ? '#326b5c' : '#245246';
+                    } else {
+                        ctx.fillStyle = '#d8d29c';
+                    }
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }).texture;
+    }
+
+    static createAnimatedPortal() {
+        return this.createCanvasTexture((ctx) => {
+            ctx.fillStyle = '#05020a';
+            ctx.fillRect(0, 0, 16, 16);
+        });
+    }
+
+    static createAnimatedLava() {
+        return this.createCanvasTexture((ctx) => {
+            ctx.fillStyle = '#cf3808';
+            ctx.fillRect(0, 0, 16, 16);
+        });
+    }
+}
+
+/**
+ * ============================================================================
+ * 3. CẤU TRÚC 2-NODE GIMBAL ORBIT CAMERA (KHỬ HOÀN TOÀN VẶN NGHIÊNG)
+ * ============================================================================
+ */
+class GimbalOrbitCamera {
+    constructor(scene, camera, domElement) {
+        this.camera = camera;
+        this.domElement = domElement;
+
+        // Node 1: Yaw Pivot (quay ngang quanh trục Y thế giới)
+        this.yawPivot = new THREE.Group();
+        // Node 2: Pitch Pivot (quay gật gù quanh trục X cục bộ)
+        this.pitchPivot = new THREE.Group();
+
+        this.yawPivot.add(this.pitchPivot);
+        this.pitchPivot.add(this.camera);
+        scene.add(this.yawPivot);
+
+        // Góc chuẩn Isometric Voxel
+        this.yaw = THREE.MathUtils.degToRad(32);
+        this.pitch = THREE.MathUtils.degToRad(46);
+        this.distance = 19.5;
+
+        this.minPitch = THREE.MathUtils.degToRad(18);
+        this.maxPitch = THREE.MathUtils.degToRad(82);
+        this.minDistance = 8.5;
+        this.maxDistance = 36.0;
+
+        this.targetPos = new THREE.Vector3(0, 0, 0);
+        this.shakeIntensity = 0.0;
+
+        this._initMouseControls();
+        this.update(0.016, true);
+    }
+
+    _initMouseControls() {
+        let isDragging = false;
+        let prevX = 0;
+        let prevY = 0;
+
+        this.domElement.addEventListener('mousedown', (e) => {
+            if (e.button === 0 || e.button === 2) {
+                isDragging = true;
+                prevX = e.clientX;
+                prevY = e.clientY;
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - prevX;
+            const dy = e.clientY - prevY;
+            prevX = e.clientX;
+            prevY = e.clientY;
+
+            this.yaw -= dx * 0.0065;
+            this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch + dy * 0.006));
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        this.domElement.addEventListener('wheel', (e) => {
+            this.distance = Math.max(this.minDistance, Math.min(this.maxDistance, this.distance + e.deltaY * 0.012));
+        }, { passive: true });
+    }
+
+    setTarget(x, y, z, distance = null) {
+        this.targetPos.set(x, y, z);
+        if (distance !== null) {
+            this.distance = Math.max(this.minDistance, Math.min(this.maxDistance, distance));
+        }
+    }
+
+    resetGoldenAngle() {
+        this.yaw = THREE.MathUtils.degToRad(32);
+        this.pitch = THREE.MathUtils.degToRad(46);
+    }
+
+    setTopDown() {
+        this.yaw = 0;
+        this.pitch = THREE.MathUtils.degToRad(80);
+    }
+
+    rotateStep(deg) {
+        this.yaw += THREE.MathUtils.degToRad(deg);
+    }
+
+    triggerShake(intensity = 0.35) {
+        this.shakeIntensity = intensity;
+    }
+
+    update(dt, instant = false) {
+        if (instant) {
+            this.yawPivot.position.copy(this.targetPos);
+        } else {
+            const lerpFactor = 1.0 - Math.pow(0.001, dt * 2.5);
+            this.yawPivot.position.lerp(this.targetPos, lerpFactor);
+        }
+
+        this.yawPivot.rotation.set(0, this.yaw, 0);
+        this.pitchPivot.rotation.set(-this.pitch, 0, 0);
+
+        let sx = 0, sy = 0;
+        if (this.shakeIntensity > 0.003) {
+            sx = (Math.random() - 0.5) * this.shakeIntensity;
+            sy = (Math.random() - 0.5) * this.shakeIntensity;
+            this.shakeIntensity *= Math.pow(0.86, dt * 60);
+        } else {
+            this.shakeIntensity = 0;
+        }
+
+        this.camera.position.set(sx, sy, this.distance);
+        this.camera.rotation.set(0, 0, 0);
+    }
+}
+
+/**
+ * ============================================================================
+ * 4. TRÌNH DIỄN HOẠT 3D CHÍNH (THREE.JS VOXEL SCENE ENGINE)
+ * ============================================================================
+ */
+class VoxelSceneRenderer {
+    constructor() {
+        this.container = document.getElementById('canvas-container');
+        this.biome = 'overworld';
+
+        this.stageData = null;
+        this.rows = 0;
+        this.cols = 0;
+        this.offsetX = 0;
+        this.offsetZ = 0;
+
+        this.b1 = { r: 0, c: 0 };
+        this.b2 = { r: 0, c: 0 };
+        this.bridgesOpen = new Set();
+        this.isSplit = false;
+        this.selected = null; // cube đang điều khiển khi khối tách (0 = b1, 1 = b2)
+
+        this.tileMeshes = {};
+        this.bridgeMeshes = {};
+        this.switchPlates = {};
+        this.portalRings = [];
+
+        this.isBusy = false;
+
+        this._initThree();
+        this._initTextures();
+        this._initEnvironment();
+
+        this.clock = new THREE.Clock();
+        this.animate = this.animate.bind(this);
+        requestAnimationFrame(this.animate);
+    }
+
+    _initThree() {
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 200);
+
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.container.appendChild(this.renderer.domElement);
+
+        this.gimbalCam = new GimbalOrbitCamera(this.scene, this.camera, this.renderer.domElement);
+
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.68);
+        this.scene.add(this.ambientLight);
+
+        this.dirLight = new THREE.DirectionalLight(0xfff5d6, 0.95);
+        this.dirLight.position.set(14, 24, 16);
+        this.dirLight.castShadow = true;
+        this.dirLight.shadow.mapSize.width = 2048;
+        this.dirLight.shadow.mapSize.height = 2048;
+        this.dirLight.shadow.camera.near = 2;
+        this.dirLight.shadow.camera.far = 65;
+        const d = 14;
+        this.dirLight.shadow.camera.left = -d;
+        this.dirLight.shadow.camera.right = d;
+        this.dirLight.shadow.camera.top = d;
+        this.dirLight.shadow.camera.bottom = -d;
+        this.dirLight.shadow.bias = -0.0005;
+        this.scene.add(this.dirLight);
+
+        this.portalLight = new THREE.PointLight(0xaa44ff, 1.5, 9);
+        this.scene.add(this.portalLight);
+
+        this.boardGroup = new THREE.Group();
+        this.scene.add(this.boardGroup);
+
+        this.fxGroup = new THREE.Group();
+        this.scene.add(this.fxGroup);
+
+        window.addEventListener('resize', () => {
+            this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    }
+
+    _initTextures() {
+        this.tex = {
+            oakBark: VoxelTextures.oakBark(),
+            oakTop: VoxelTextures.oakTop(),
+            stone: VoxelTextures.stoneBricks(),
+            start: VoxelTextures.cryingObsidian(),
+            fragile: VoxelTextures.fragileSand(),
+            trapdoor: VoxelTextures.oakTrapdoor(),
+            plateSoft: VoxelTextures.pressurePlate(false),
+            plateHeavy: VoxelTextures.ironSlab(),
+            plateSplit: VoxelTextures.goldenSlab(),
+            endFrame: VoxelTextures.endFrameTop(),
+            portalAnim: VoxelTextures.createAnimatedPortal(),
+            lavaAnim: VoxelTextures.createAnimatedLava()
+        };
+
+        this.mat = {
+            stone: new THREE.MeshStandardMaterial({ map: this.tex.stone, roughness: 0.88 }),
+            start: new THREE.MeshStandardMaterial({
+                map: this.tex.start,
+                roughness: 0.5,
+                emissive: 0x3a0ca3,
+                emissiveIntensity: 0.45
+            }),
+            fragile: new THREE.MeshStandardMaterial({ map: this.tex.fragile, roughness: 0.9 }),
+            trapdoor: new THREE.MeshStandardMaterial({ map: this.tex.trapdoor, roughness: 0.8 }),
+            plateSoft: new THREE.MeshStandardMaterial({ map: this.tex.plateSoft, roughness: 0.7 }),
+            plateHeavy: new THREE.MeshStandardMaterial({
+                map: this.tex.plateHeavy,
+                metalness: 0.15,
+                roughness: 0.35,
+                emissive: 0x333344,
+                emissiveIntensity: 0.2
+            }),
+            plateSplit: new THREE.MeshStandardMaterial({
+                map: this.tex.plateSplit,
+                metalness: 0.2,
+                roughness: 0.3,
+                emissive: 0x996600,
+                emissiveIntensity: 0.45
+            }),
+            endFrame: new THREE.MeshStandardMaterial({ map: this.tex.endFrame, roughness: 0.7 }),
+            portalInside: new THREE.MeshBasicMaterial({ map: this.tex.portalAnim.texture })
+        };
+    }
+
+    _initEnvironment() {
+        // 1. OVERWORLD CLOUDS
+        this.cloudsGroup = new THREE.Group();
+        const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.88 });
+        for (let i = 0; i < 16; i++) {
+            const w = 3 + Math.floor(Math.random() * 5);
+            const d = 2 + Math.floor(Math.random() * 4);
+            const geo = new THREE.BoxGeometry(w, 0.7, d);
+            const mesh = new THREE.Mesh(geo, cloudMat);
+            mesh.position.set(
+                (Math.random() - 0.5) * 55,
+                6.5 + Math.random() * 5,
+                (Math.random() - 0.5) * 45
+            );
+            mesh.userData = { speed: 0.35 + Math.random() * 0.45 };
+            this.cloudsGroup.add(mesh);
+        }
+        this.scene.add(this.cloudsGroup);
+
+        // 2. NETHER LAVA OCEAN
+        this.tex.lavaAnim.texture.wrapS = THREE.RepeatWrapping;
+        this.tex.lavaAnim.texture.wrapT = THREE.RepeatWrapping;
+        this.tex.lavaAnim.texture.repeat.set(22, 22);
+
+        const lavaGeo = new THREE.PlaneGeometry(90, 90, 36, 36);
+        lavaGeo.rotateX(-Math.PI / 2);
+        const lavaMat = new THREE.MeshBasicMaterial({ map: this.tex.lavaAnim.texture });
+        this.lavaMesh = new THREE.Mesh(lavaGeo, lavaMat);
+        this.lavaMesh.position.y = -4.2;
+        this.lavaMesh.visible = false;
+        this.scene.add(this.lavaMesh);
+
+        // 3. AMBIENT PARTICLES (Nether Embers & The End Crystals)
+        this.ambientParticles = new THREE.Group();
+        const pGeo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
+        for (let i = 0; i < 95; i++) {
+            const pMat = new THREE.MeshBasicMaterial({ color: 0xff6600 });
+            const p = new THREE.Mesh(pGeo, pMat);
+            p.position.set(
+                (Math.random() - 0.5) * 32,
+                -4 + Math.random() * 14,
+                (Math.random() - 0.5) * 32
+            );
+            p.userData = {
+                vy: 0.6 + Math.random() * 1.2,
+                phase: Math.random() * Math.PI * 2
+            };
+            this.ambientParticles.add(p);
+        }
+        this.ambientParticles.visible = false;
+        this.scene.add(this.ambientParticles);
+
+        this.setBiome('overworld');
+    }
+
+    setBiome(biomeName) {
+        this.biome = biomeName;
+        BloxorzHud.markBiome(biomeName);
+
+        if (biomeName === 'overworld') {
+            this.scene.background = new THREE.Color(0x87ceeb);
+            this.scene.fog = new THREE.FogExp2(0x87ceeb, 0.014);
+            this.ambientLight.color.setHex(0xffffff);
+            this.ambientLight.intensity = 0.68;
+            this.dirLight.color.setHex(0xfff4d2);
+            this.dirLight.intensity = 0.95;
+
+            this.cloudsGroup.visible = true;
+            this.lavaMesh.visible = false;
+            this.ambientParticles.visible = false;
+        } else if (biomeName === 'nether') {
+            this.scene.background = new THREE.Color(0x2b0705);
+            this.scene.fog = new THREE.FogExp2(0x450d08, 0.032);
+            this.ambientLight.color.setHex(0xff7744);
+            this.ambientLight.intensity = 0.55;
+            this.dirLight.color.setHex(0xffaa55);
+            this.dirLight.intensity = 0.85;
+
+            this.cloudsGroup.visible = false;
+            this.lavaMesh.visible = true;
+            this.ambientParticles.visible = true;
+            this.ambientParticles.children.forEach(p => {
+                p.material.color.setHex(Math.random() > 0.4 ? 0xff5500 : 0xffcc22);
+            });
+        } else if (biomeName === 'end') {
+            this.scene.background = new THREE.Color(0x07030d);
+            this.scene.fog = new THREE.FogExp2(0x130824, 0.028);
+            this.ambientLight.color.setHex(0x9d65ff);
+            this.ambientLight.intensity = 0.55;
+            this.dirLight.color.setHex(0xe0b8ff);
+            this.dirLight.intensity = 0.8;
+
+            this.cloudsGroup.visible = false;
+            this.lavaMesh.visible = false;
+            this.ambientParticles.visible = true;
+            this.ambientParticles.children.forEach(p => {
+                p.material.color.setHex(Math.random() > 0.5 ? 0xd96bff : 0x7b2cbf);
+            });
+        }
+    }
+
+    _createPlayerMesh() {
+        if (this.playerPivot) {
+            this.scene.remove(this.playerPivot);
+        }
+
+        this.playerPivot = new THREE.Group();
+        this.playerMesh = new THREE.Group();
+
+        const barkMat = new THREE.MeshStandardMaterial({ map: this.tex.oakBark, roughness: 0.85 });
+        const ringMat = new THREE.MeshStandardMaterial({ map: this.tex.oakTop, roughness: 0.8 });
+        const materials = [barkMat, barkMat, ringMat, ringMat, barkMat, barkMat];
+
+        const halfGeo = new THREE.BoxGeometry(1, 1, 1);
+
+        const bottomCube = new THREE.Mesh(halfGeo, materials);
+        bottomCube.position.y = -0.5;
+        bottomCube.castShadow = true;
+        bottomCube.receiveShadow = true;
+
+        const topCube = new THREE.Mesh(halfGeo, materials);
+        topCube.position.y = 0.5;
+        topCube.castShadow = true;
+        topCube.receiveShadow = true;
+
+        this.playerMesh.add(bottomCube);
+        this.playerMesh.add(topCube);
+
+        this.playerPivot.add(this.playerMesh);
+        this.scene.add(this.playerPivot);
+
+        // 2 cube riêng khi khối tách: mỗi cube có pivot riêng để lăn độc lập
+        (this.splitPivots || []).forEach(p => this.scene.remove(p));
+        if (this.purpleDiamond) { this.scene.remove(this.purpleDiamond); }
+        this.splitPivots = [];
+        this.splitMeshes = [];
+        for (let i = 0; i < 2; i++) {
+            const pivot = new THREE.Group();
+            const mesh = new THREE.Mesh(halfGeo, materials);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            pivot.add(mesh);
+            pivot.visible = false;
+            this.scene.add(pivot);
+            this.splitPivots.push(pivot);
+            this.splitMeshes.push(mesh);
+        }
+
+        // Purple Diamond indicator: kim cương 4 cạnh màu tím lơ lửng phong cách Minecraft
+        const diamondGeo = new THREE.OctahedronGeometry(0.22, 0);
+        const diamondMat = new THREE.MeshStandardMaterial({
+            color: 0xc77dff,
+            emissive: 0x9d4edd,
+            emissiveIntensity: 0.95,
+            roughness: 0.1,
+            metalness: 0.4
+        });
+        this.purpleDiamond = new THREE.Mesh(diamondGeo, diamondMat);
+        this.purpleDiamond.visible = false;
+        this.scene.add(this.purpleDiamond);
+    }
+
+    /**
+     * HỢP ĐỒNG GIAO TIẾP 1: load_stage(stage, state)
+     */
+    loadStage(payload, onComplete) {
+        const stage = payload.stage;
+        const state = payload.state;
+        this.stageData = stage;
+
+        while (this.boardGroup.children.length > 0) {
+            this.boardGroup.remove(this.boardGroup.children[0]);
+        }
+        while (this.fxGroup.children.length > 0) {
+            this.fxGroup.remove(this.fxGroup.children[0]);
+        }
+
+        this.rows = stage.rows;
+        this.cols = stage.cols;
+        this.offsetX = -(this.cols - 1) / 2;
+        this.offsetZ = -(this.rows - 1) / 2;
+
+        this.tileMeshes = {};
+        this.bridgeMeshes = {};
+        this.switchPlates = {};
+        this.portalRings = [];
+        this.bridgesOpen = new Set(state.bridges_open || []);
+
+        const tileGeo = new THREE.BoxGeometry(0.98, 0.36, 0.98);
+        const bridgeGeo = new THREE.BoxGeometry(0.98, 0.14, 0.98);
+        const plateGeo = new THREE.BoxGeometry(0.68, 0.06, 0.68);
+
+        const switchMap = {};
+        (stage.switches || []).forEach(sw => {
+            switchMap[`${sw.pos[0]},${sw.pos[1]}`] = sw;
+        });
+        const bridgeAt = stage.bridge_at || {};
+
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const ch = stage.grid[r][c];
+                if (ch === '.' || ch === ' ') continue;
+
+                const wx = c + this.offsetX;
+                const wz = r + this.offsetZ;
+                const key = `${r},${c}`;
+                const bid = bridgeAt[key];
+
+                if (ch === 'S') {
+                    const mesh = new THREE.Mesh(tileGeo, this.mat.start);
+                    mesh.position.set(wx, -0.18, wz);
+                    mesh.receiveShadow = true;
+                    mesh.castShadow = true;
+                    this.boardGroup.add(mesh);
+                    this.tileMeshes[key] = mesh;
+                } else if (ch === 'G') {
+                    // CỔNG END ĐA TẦNG XOAY (Multi-layered Rotating End Portal)
+                    const portalGroup = new THREE.Group();
+                    portalGroup.position.set(wx, 0, wz);
+
+                    const wallNS = new THREE.BoxGeometry(0.98, 0.36, 0.14);
+                    const wallEW = new THREE.BoxGeometry(0.14, 0.36, 0.70);
+
+                    const nMesh = new THREE.Mesh(wallNS, this.mat.endFrame);
+                    nMesh.position.set(0, -0.18, -0.42);
+                    const sMesh = new THREE.Mesh(wallNS, this.mat.endFrame);
+                    sMesh.position.set(0, -0.18, 0.42);
+                    const eMesh = new THREE.Mesh(wallEW, this.mat.endFrame);
+                    eMesh.position.set(0.42, -0.18, 0);
+                    const wMesh = new THREE.Mesh(wallEW, this.mat.endFrame);
+                    wMesh.position.set(-0.42, -0.18, 0);
+
+                    // Tầng 1: Đáy cổng vũ trụ
+                    const voidGeo = new THREE.PlaneGeometry(0.76, 0.76);
+                    voidGeo.rotateX(-Math.PI / 2);
+                    const voidMesh = new THREE.Mesh(voidGeo, this.mat.portalInside);
+                    voidMesh.position.set(0, -0.28, 0);
+
+                    // Tầng 2 & 3: Đĩa tinh vân xoay ngược chiều nhau
+                    const ringGeo1 = new THREE.BoxGeometry(0.52, 0.02, 0.52);
+                    const ringMat1 = new THREE.MeshBasicMaterial({
+                        color: 0x9d4edd,
+                        transparent: true,
+                        opacity: 0.55
+                    });
+                    const ring1 = new THREE.Mesh(ringGeo1, ringMat1);
+                    ring1.position.set(0, -0.22, 0);
+
+                    const ringGeo2 = new THREE.BoxGeometry(0.34, 0.02, 0.34);
+                    const ringMat2 = new THREE.MeshBasicMaterial({
+                        color: 0x55ffff,
+                        transparent: true,
+                        opacity: 0.65
+                    });
+                    const ring2 = new THREE.Mesh(ringGeo2, ringMat2);
+                    ring2.position.set(0, -0.16, 0);
+
+                    this.portalRings.push({ ring1, ring2 });
+
+                    portalGroup.add(nMesh, sMesh, eMesh, wMesh, voidMesh, ring1, ring2);
+                    this.boardGroup.add(portalGroup);
+                    this.tileMeshes[key] = portalGroup;
+
+                    this.portalLight.position.set(wx, 0.7, wz);
+                } else if (bid) {
+                    // Cầu Cửa Sập Gỗ (Oak Trapdoor)
+                    const isOpen = this.bridgesOpen.has(bid);
+                    const mesh = new THREE.Mesh(bridgeGeo, this.mat.trapdoor);
+                    mesh.position.set(wx, -0.07, wz);
+                    mesh.scale.set(isOpen ? 1 : 0.001, 1, isOpen ? 1 : 0.001);
+                    mesh.visible = isOpen;
+                    mesh.receiveShadow = true;
+                    mesh.castShadow = true;
+                    this.boardGroup.add(mesh);
+                    if (!this.bridgeMeshes[bid]) this.bridgeMeshes[bid] = [];
+                    this.bridgeMeshes[bid].push(mesh);
+                } else {
+                    const isFragile = (ch === '!' || ch === 'F');
+                    const mat = isFragile ? this.mat.fragile : this.mat.stone;
+                    const mesh = new THREE.Mesh(tileGeo, mat);
+                    mesh.position.set(wx, -0.18, wz);
+                    mesh.receiveShadow = true;
+                    mesh.castShadow = true;
+                    this.boardGroup.add(mesh);
+                    this.tileMeshes[key] = mesh;
+
+                    const sw = switchMap[key];
+                    const isSwitchTile = Boolean(sw) || ch === 'o' || ch === 'x' || ch === 's' || ch === '(' || ch === ')';
+                    if (isSwitchTile) {
+                        let swMat = this.mat.plateSoft;
+                        const kind = sw ? sw.kind : (ch === 'x' ? 'heavy' : (ch === 's' || ch === '(' || ch === ')' ? 'split' : 'soft'));
+                        if (kind === 'heavy') {
+                            swMat = this.mat.plateHeavy; // Iron Slab (Minecraft)
+                        } else if (kind === 'split') {
+                            swMat = this.mat.plateSplit; // Golden Slab (Minecraft)
+                        }
+                        const plate = new THREE.Mesh(plateGeo, swMat);
+                        plate.position.set(wx, 0.05, wz); // Nổi 0.05 đơn vị trên mặt sàn
+                        plate.receiveShadow = true;
+                        plate.castShadow = true;
+                        this.boardGroup.add(plate);
+                        this.switchPlates[key] = plate;
+                    }
+                }
+            }
+        }
+
+        this._createPlayerMesh();
+        this.selected = null; // Python báo lại set_selected nếu màn vẽ lại khi khối vẫn đang tách
+        this.applyStateTransform(state, true);
+
+        BloxorzHud.hideBanner();
+        this.updateHUD(
+            stage.name,
+            (payload.stage_index || 0) + 1,
+            payload.total_stages || 1,
+            payload.moves || 0
+        );
+
+        if (onComplete) onComplete();
+    }
+
+    applyStateTransform(state, instantCam = false) {
+        this.b1 = state.b1;
+        this.b2 = state.b2;
+
+        this.playerPivot.position.set(0, 0, 0);
+        this.playerPivot.rotation.set(0, 0, 0);
+
+        this.isSplit = this.isSplitState(state);
+        this.playerPivot.visible = !this.isSplit;
+        (this.splitPivots || []).forEach((pivot, i) => {
+            pivot.visible = this.isSplit;
+            pivot.position.set(0, 0, 0);
+            pivot.rotation.set(0, 0, 0);
+            const cell = i === 0 ? this.b1 : this.b2;
+            this.splitMeshes[i].position.set(cell.c + this.offsetX, 0.5, cell.r + this.offsetZ);
+            this.splitMeshes[i].rotation.set(0, 0, 0);
+            this.splitMeshes[i].scale.set(1, 1, 1);
+        });
+        this._updateDiamond(0);
+        BloxorzHud.setSelected(this.isSplit ? this.selected : null);
+
+        const x1 = this.b1.c + this.offsetX;
+        const z1 = this.b1.r + this.offsetZ;
+        const x2 = this.b2.c + this.offsetX;
+        const z2 = this.b2.r + this.offsetZ;
+
+        const cx = (x1 + x2) / 2;
+        const cz = (z1 + z2) / 2;
+
+        if (this.isStandingState(state)) {
+            this.playerMesh.position.set(cx, 1.0, cz);
+            this.playerMesh.rotation.set(0, 0, 0);
+        } else if (this.b1.r === this.b2.r) {
+            this.playerMesh.position.set(cx, 0.5, cz);
+            this.playerMesh.rotation.set(0, 0, Math.PI / 2);
+        } else {
+            this.playerMesh.position.set(cx, 0.5, cz);
+            this.playerMesh.rotation.set(Math.PI / 2, 0, 0);
+        }
+
+        this.playerMesh.scale.set(1, 1, 1);
+        this.gimbalCam.setTarget(cx, 0, cz);
+        if (instantCam) {
+            this.gimbalCam.update(0.016, true);
+        }
+    }
+
+    isStandingState(state) {
+        return state.b1.r === state.b2.r && state.b1.c === state.b2.c;
+    }
+
+    isSplitState(state) {
+        return state.pose === 'SPLIT';
+    }
+
+    /** Đặt kim cương tím lên cube đang điều khiển khi khối tách (Python gọi qua lệnh set_selected). */
+    setSelected(cube) {
+        this.selected = (cube === 0 || cube === 1) ? cube : null;
+        this._updateDiamond(0);
+        BloxorzHud.setSelected(this.isSplit ? this.selected : null);
+    }
+
+    /** Kim cương tím xoay, nhấp nhô trên cube đang điều khiển; bám theo cả khi cube đang lăn. */
+    _updateDiamond(elapsed) {
+        if (!this.purpleDiamond) return;
+        const show = this.isSplit && this.selected !== null;
+        this.purpleDiamond.visible = show;
+        if (!show) return;
+        const pos = new THREE.Vector3();
+        this.splitMeshes[this.selected].getWorldPosition(pos);
+        this.purpleDiamond.position.set(pos.x, pos.y + 0.85 + Math.sin(elapsed * 4.0) * 0.08, pos.z);
+        this.purpleDiamond.rotation.y = elapsed * 2.5;
+        this.purpleDiamond.rotation.z = Math.sin(elapsed * 1.5) * 0.12;
+    }
+
+    /** Cube nào lăn khi khối đang tách: ô cũ không còn nằm trong state mới (kể cả khi gộp lại). */
+    _movingCube(oldState, newState) {
+        const cells = [newState.b1, newState.b2];
+        const has = (p) => cells.some(q => q.r === p.r && q.c === p.c);
+        if (!has(oldState.b1)) return 0;
+        if (!has(oldState.b2)) return 1;
+        return this.selected === null ? 0 : this.selected;
+    }
+
+    /** Pivot và mesh sẽ lăn: cả khối, hoặc 1 cube khi đang tách. */
+    _rollTarget(oldState, cube) {
+        if (!this.isSplitState(oldState)) {
+            return { pivot: this.playerPivot, mesh: this.playerMesh, cells: [oldState.b1, oldState.b2] };
+        }
+        return { pivot: this.splitPivots[cube], mesh: this.splitMeshes[cube], cells: [cube === 0 ? oldState.b1 : oldState.b2] };
+    }
+
+    _setupRollPivot(oldState, dir, target = null) {
+        const { pivot, mesh, cells } = target || this._rollTarget(oldState, 0);
+        const first = cells[0], last = cells[cells.length - 1];
+        const x1 = first.c + this.offsetX;
+        const z1 = first.r + this.offsetZ;
+        const x2 = last.c + this.offsetX;
+        const z2 = last.r + this.offsetZ;
+
+        const minWX = Math.min(x1, x2);
+        const maxWX = Math.max(x1, x2);
+        const minWZ = Math.min(z1, z2);
+        const maxWZ = Math.max(z1, z2);
+        const centerWX = (x1 + x2) / 2;
+        const centerWZ = (z1 + z2) / 2;
+
+        const pivotPos = new THREE.Vector3();
+        const rotAxis = new THREE.Vector3();
+
+        if (dir === 'LEFT') {
+            pivotPos.set(minWX - 0.5, 0, centerWZ);
+            rotAxis.set(0, 0, 1);
+        } else if (dir === 'RIGHT') {
+            pivotPos.set(maxWX + 0.5, 0, centerWZ);
+            rotAxis.set(0, 0, -1);
+        } else if (dir === 'UP') {
+            pivotPos.set(centerWX, 0, minWZ - 0.5);
+            rotAxis.set(-1, 0, 0);
+        } else if (dir === 'DOWN') {
+            pivotPos.set(centerWX, 0, maxWZ + 0.5);
+            rotAxis.set(1, 0, 0);
+        }
+
+        const worldPos = mesh.position.clone();
+        const worldQuat = mesh.quaternion.clone();
+
+        pivot.position.copy(pivotPos);
+        pivot.rotation.set(0, 0, 0);
+
+        mesh.position.copy(worldPos).sub(pivotPos);
+        mesh.quaternion.copy(worldQuat);
+
+        return rotAxis;
+    }
+
+    /**
+     * HỢP ĐỒNG GIAO TIẾP 2: on_move(old_state, action, new_state)
+     */
+    onMove(payload, onComplete) {
+        const oldState = payload.old_state;
+        const newState = payload.new_state;
+        const dir = payload.action;
+
+        // Khi tách: kim cương nằm trên cube đang lăn ngay từ đầu bước (cube theo chỉ số của trạng thái cũ);
+        // cuối bước selected của trạng thái mới (lệnh set_selected hoặc bước lời giải AI) xử lý việc đổi thứ tự cube.
+        let moving = 0;
+        if (this.isSplitState(oldState)) {
+            moving = (payload.action_cube === 0 || payload.action_cube === 1)
+                ? payload.action_cube : this._movingCube(oldState, newState);
+            this.selected = moving;
+        }
+        this.applyStateTransform(oldState);
+        const target = this._rollTarget(oldState, moving);
+        const rotAxis = this._setupRollPivot(oldState, dir, target);
+        const targetAngle = Math.PI / 2;
+
+        if (typeof payload.moves === 'number') {
+            BloxorzHud.setMoves(payload.moves);
+        }
+
+        const duration = 0.16; // Chuẩn 0.16 giây
+        const startTime = performance.now();
+
+        const animateRoll = (now) => {
+            const t = Math.min((now - startTime) / (duration * 1000), 1);
+            const ease = 1 - Math.pow(1 - t, 2.2);
+            target.pivot.setRotationFromAxisAngle(rotAxis, targetAngle * ease);
+
+            if (t < 1) {
+                requestAnimationFrame(animateRoll);
+            } else {
+                if (payload.selected !== undefined) this.selected = payload.selected; // bước lời giải AI
+                this.applyStateTransform(newState);
+                SFX.playStep(this.isStandingState(newState));
+                this.triggerLandingBounce(this.isStandingState(newState));
+
+                // Kiểm tra nhấn công tắc bàn đạp & đồng bộ cầu
+                this._depressOccupiedPlates(newState);
+                if (payload.bridges_changed) {
+                    SFX.playSwitch();
+                    this._syncBridges(newState.bridges_open || []);
+                }
+
+                if (onComplete) onComplete();
+            }
+        };
+
+        requestAnimationFrame(animateRoll);
+    }
+
+    /**
+     * HỢP ĐỒNG GIAO TIẾP 3: on_fall(old_state, action)
+     */
+    onFall(payload, onComplete) {
+        const oldState = payload.old_state;
+        const dir = payload.action;
+        const brokenCell = payload.broken_cell;
+
+        this.applyStateTransform(oldState);
+        const target = this._rollTarget(oldState, this.selected === null ? 0 : this.selected);
+        const rotAxis = this._setupRollPivot(oldState, dir, target);
+        const targetAngle = Math.PI / 2;
+        const duration = 0.15;
+        const startTime = performance.now();
+
+        const rollBeforeFall = (now) => {
+            const t = Math.min((now - startTime) / (duration * 1000), 1);
+            target.pivot.setRotationFromAxisAngle(rotAxis, targetAngle * t);
+            if (t < 1) {
+                requestAnimationFrame(rollBeforeFall);
+            } else {
+                SFX.playFall();
+                this.gimbalCam.triggerShake(0.38);
+
+                if (brokenCell) {
+                    this.breakFragileTile(brokenCell[0], brokenCell[1]);
+                }
+
+                this._runFallTumble(dir, onComplete, target.pivot, target.mesh);
+            }
+        };
+
+        requestAnimationFrame(rollBeforeFall);
+    }
+
+    _runFallTumble(dir, onComplete, pivot = this.playerPivot, mesh = this.playerMesh) {
+        // Chuyển tọa độ mesh về thế giới để rơi tự do
+        const worldPos = new THREE.Vector3();
+        const worldQuat = new THREE.Quaternion();
+        mesh.getWorldPosition(worldPos);
+        mesh.getWorldQuaternion(worldQuat);
+
+        pivot.position.set(0, 0, 0);
+        pivot.rotation.set(0, 0, 0);
+        mesh.position.copy(worldPos);
+        mesh.quaternion.copy(worldQuat);
+
+        let spinX = (Math.random() - 0.5) * 6;
+        let spinZ = (Math.random() - 0.5) * 6;
+        let vx = 0, vz = 0;
+
+        if (dir === 'LEFT') { spinZ = 9; vx = -2.2; }
+        else if (dir === 'RIGHT') { spinZ = -9; vx = 2.2; }
+        else if (dir === 'UP') { spinX = -9; vz = -2.2; }
+        else if (dir === 'DOWN') { spinX = 9; vz = 2.2; }
+
+        let vy = 0.5;
+        let lastTime = performance.now();
+
+        const fallLoop = (now) => {
+            const dt = Math.min((now - lastTime) / 1000, 0.05);
+            lastTime = now;
+
+            vy -= 26 * dt;
+            mesh.position.x += vx * dt;
+            mesh.position.y += vy * dt;
+            mesh.position.z += vz * dt;
+
+            mesh.rotation.x += spinX * dt;
+            mesh.rotation.z += spinZ * dt;
+
+            if (mesh.position.y > -12) {
+                requestAnimationFrame(fallLoop);
+            } else {
+                if (onComplete) onComplete();
+                SceneBridge.requestRestart();
+            }
+        };
+
+        requestAnimationFrame(fallLoop);
+    }
+
+    /**
+     * HỢP ĐỒNG GIAO TIẾP 4: on_win(state)
+     */
+    onWin(payload, onComplete) {
+        const state = payload.state;
+        this.applyStateTransform(state);
+        SFX.playWin();
+
+        const wx = state.b1.c + this.offsetX;
+        const wz = state.b1.r + this.offsetZ;
+        this.spawnFireworks(wx, 1.2, wz);
+
+        BloxorzHud.showBanner();
+
+        const start = performance.now();
+        const dur = 950;
+        const sinkLoop = (now) => {
+            const t = Math.min((now - start) / dur, 1);
+            this.playerMesh.position.y = 1.0 - t * 1.65;
+            this.playerMesh.rotation.y = t * Math.PI * 2;
+            const s = 1 - t * 0.65;
+            this.playerMesh.scale.set(s, 1, s);
+
+            if (t < 1) {
+                requestAnimationFrame(sinkLoop);
+            } else {
+                setTimeout(() => {
+                    BloxorzHud.hideBanner();
+                    if (onComplete) onComplete();
+                    BloxorzHud.afterWin(SceneBridge);
+                }, 700);
+            }
+        };
+        requestAnimationFrame(sinkLoop);
+    }
+
+    triggerLandingBounce(isStanding) {
+        const start = performance.now();
+        const dur = 110;
+        const bounce = (now) => {
+            const p = Math.min((now - start) / dur, 1);
+            const s = Math.sin(p * Math.PI) * 0.06;
+            if (isStanding) {
+                this.playerMesh.scale.set(1 + s, 1 - s, 1 + s);
+            } else {
+                this.playerMesh.scale.set(1 - s * 0.5, 1 + s, 1 + s * 0.5);
+            }
+            if (p < 1) requestAnimationFrame(bounce);
+            else this.playerMesh.scale.set(1, 1, 1);
+        };
+        requestAnimationFrame(bounce);
+    }
+
+    _depressOccupiedPlates(state) {
+        const keys = [`${state.b1.r},${state.b1.c}`, `${state.b2.r},${state.b2.c}`];
+        keys.forEach(k => {
+            const plate = this.switchPlates[k];
+            if (plate) {
+                plate.position.y = 0.01;
+                setTimeout(() => { plate.position.y = 0.05; }, 220);
+            }
+        });
+    }
+
+    _syncBridges(openList) {
+        const nextSet = new Set(openList);
+        Object.keys(this.bridgeMeshes).forEach(bid => {
+            const isOpen = nextSet.has(bid);
+            const wasOpen = this.bridgesOpen.has(bid);
+            if (isOpen !== wasOpen) {
+                this.animateBridgeGroup(bid, isOpen);
+            }
+        });
+        this.bridgesOpen = nextSet;
+    }
+
+    animateBridgeGroup(bridgeKey, isOpen) {
+        const meshes = this.bridgeMeshes[bridgeKey] || [];
+        meshes.forEach(m => {
+            m.visible = true;
+            const start = performance.now();
+            const dur = 200;
+            const anim = (now) => {
+                const t = Math.min((now - start) / dur, 1);
+                const val = isOpen ? Math.max(0.01, t) : Math.max(0.01, 1 - t);
+                m.scale.set(val, 1, val);
+                if (t < 1) requestAnimationFrame(anim);
+                else if (!isOpen) m.visible = false;
+            };
+            requestAnimationFrame(anim);
+        });
+    }
+
+    breakFragileTile(r, c) {
+        const key = `${r},${c}`;
+        const mesh = this.tileMeshes[key];
+        if (!mesh) return;
+
+        const start = performance.now();
+        const anim = (now) => {
+            const dt = (now - start) / 1000;
+            mesh.position.y -= dt * 0.45;
+            mesh.rotation.x += 0.12;
+            mesh.rotation.z += 0.09;
+            if (dt < 0.7) requestAnimationFrame(anim);
+            else mesh.visible = false;
+        };
+        requestAnimationFrame(anim);
+    }
+
+    spawnFireworks(x, y, z) {
+        const colors = [0x55ff55, 0xffff55, 0xff55ff, 0x55ffff, 0xffaa00];
+        const geo = new THREE.BoxGeometry(0.18, 0.18, 0.18);
+
+        for (let i = 0; i < 65; i++) {
+            const mat = new THREE.MeshBasicMaterial({ color: colors[i % colors.length] });
+            const p = new THREE.Mesh(geo, mat);
+            p.position.set(x, y, z);
+
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 5.5;
+            p.userData = {
+                vx: Math.cos(angle) * speed,
+                vy: 4 + Math.random() * 6.5,
+                vz: Math.sin(angle) * speed,
+                life: 1.0
+            };
+            this.fxGroup.add(p);
+        }
+    }
+
+    updateHUD(stageName, stageIdx, totalStages, moves) {
+        BloxorzHud.updateStats(stageName, stageIdx, totalStages, moves);
+    }
+
+    animate() {
+        requestAnimationFrame(this.animate);
+
+        const dt = Math.min(this.clock.getDelta(), 0.05);
+        const elapsed = this.clock.getElapsedTime();
+
+        // 1. Cập nhật Texture Lòng Cổng End & Đĩa Tinh Vân Đa Tầng Xoay
+        const pCtx = this.tex.portalAnim.ctx;
+        pCtx.fillStyle = '#070210';
+        pCtx.fillRect(0, 0, 16, 16);
+        for (let i = 0; i < 18; i++) {
+            const sx = Math.floor((Math.sin(elapsed * 1.5 + i * 4.1) * 0.5 + 0.5) * 16);
+            const sy = Math.floor((Math.cos(elapsed * 1.1 + i * 2.7) * 0.5 + 0.5) * 16);
+            pCtx.fillStyle = (i % 3 === 0) ? '#55ffff' : (i % 2 === 0 ? '#d96bff' : '#7b2cbf');
+            pCtx.fillRect(sx, sy, 1, 1);
+        }
+        this.tex.portalAnim.texture.needsUpdate = true;
+
+        this.portalRings.forEach(pr => {
+            pr.ring1.rotation.y = elapsed * 1.8;
+            pr.ring2.rotation.y = -elapsed * 2.9;
+        });
+
+        // 2. Cập nhật mây Overworld
+        if (this.cloudsGroup.visible) {
+            this.cloudsGroup.children.forEach(c => {
+                c.position.x += c.userData.speed * dt;
+                if (c.position.x > 28) c.position.x = -28;
+            });
+        }
+
+        // 3. Cập nhật Biển Dung Nham Nether cuộn sóng
+        if (this.lavaMesh.visible) {
+            const lCtx = this.tex.lavaAnim.ctx;
+            for (let y = 0; y < 16; y++) {
+                for (let x = 0; x < 16; x++) {
+                    const v = Math.sin(x * 0.5 + elapsed * 3) + Math.cos(y * 0.5 - elapsed * 2.5);
+                    lCtx.fillStyle = v > 1.1 ? '#ffdd33' : (v > 0.2 ? '#ff6600' : '#c92a04');
+                    lCtx.fillRect(x, y, 1, 1);
+                }
+            }
+            this.tex.lavaAnim.texture.needsUpdate = true;
+
+            const posAttr = this.lavaMesh.geometry.attributes.position;
+            for (let i = 0; i < posAttr.count; i++) {
+                const vx = posAttr.getX(i);
+                const vz = posAttr.getZ(i);
+                posAttr.setY(i, Math.sin(vx * 0.35 + elapsed * 2.2) * 0.22 + Math.cos(vz * 0.35 + elapsed * 1.8) * 0.22);
+            }
+            posAttr.needsUpdate = true;
+        }
+
+        // 4. Cập nhật hạt Ember (Nether) & End Crystals (The End)
+        if (this.ambientParticles.visible) {
+            this.ambientParticles.children.forEach(p => {
+                p.position.y += p.userData.vy * dt;
+                p.position.x += Math.sin(elapsed * 2 + p.userData.phase) * 0.5 * dt;
+                p.rotation.x += 2 * dt;
+                p.rotation.y += 2 * dt;
+                if (p.position.y > 10) p.position.y = -4;
+            });
+        }
+
+        // 5. Cập nhật Pháo hoa Pixel chiến thắng
+        for (let i = this.fxGroup.children.length - 1; i >= 0; i--) {
+            const f = this.fxGroup.children[i];
+            f.userData.vy -= 14 * dt;
+            f.position.x += f.userData.vx * dt;
+            f.position.y += f.userData.vy * dt;
+            f.position.z += f.userData.vz * dt;
+            f.rotation.x += 5 * dt;
+            f.rotation.y += 5 * dt;
+            f.userData.life -= dt * 0.85;
+            f.scale.setScalar(Math.max(0.001, f.userData.life));
+            if (f.userData.life <= 0) {
+                this.fxGroup.remove(f);
+            }
+        }
+
+        // 6. Kim cương tím trên cube đang điều khiển khi khối tách
+        if (this.isSplit) this._updateDiamond(elapsed);
+
+        // 7. Cập nhật Gimbal Orbit Camera
+        this.gimbalCam.update(dt, false);
+        this.renderer.render(this.scene, this.camera);
+    }
+}
+
+/**
+ * ============================================================================
+ * 5. CẦU NỐI SCENE PROTOCOL (PYTHON <-> THREE.JS RENDERER BRIDGE)
+ * ============================================================================
+ */
+class SceneProtocolClient {
+    constructor(renderer) {
+        this.renderer = renderer;
+        this.cmdQueue = [];
+        this.isProcessing = false;
+        this.isAutoPlaying = false;
+        this.isSolving = false; // đang chờ Python giải: khóa mọi thao tác để kết quả không rơi vào màn khác
+
+        this._bindKeyboard();
+        this._initBridgeConnection();
+    }
+
+    _bindKeyboard() {
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === '1') { this.setBiome('overworld'); return; }
+            if (key === '2') { this.setBiome('nether'); return; }
+            if (key === '3') { this.setBiome('end'); return; }
+            if (key === 'c') { this.renderer.gimbalCam.resetGoldenAngle(); return; }
+            if (key === 't') { this.renderer.gimbalCam.setTopDown(); return; }
+            if (key === 'q') { this.renderer.gimbalCam.rotateStep(45); return; }
+            if (key === 'e') { this.renderer.gimbalCam.rotateStep(-45); return; }
+
+            // phím chơi tay do VT4 xử lý (bloxorz/gui/web/hud.js)
+            BloxorzInput.handleKey(e, this);
+        });
+    }
+
+    async _sendEvent(eventName, payload = {}) {
+        // 1. Ưu tiên gọi qua pywebview.api nếu có
+        if (window.pywebview && window.pywebview.api) {
+            try {
+                let res = null;
+                if (eventName === 'ready') res = await window.pywebview.api.on_ready();
+                else if (eventName === 'action') res = await window.pywebview.api.on_action(payload.action);
+                else if (eventName === 'undo') res = await window.pywebview.api.on_undo();
+                else if (eventName === 'restart') res = await window.pywebview.api.on_restart();
+                else if (eventName === 'next_stage') res = await window.pywebview.api.on_next_stage();
+                else if (eventName === 'prev_stage') res = await window.pywebview.api.on_prev_stage();
+                else if (eventName === 'solve_ai') res = await window.pywebview.api.on_solve_ai(payload.algorithm);
+
+                if (res && res.commands) {
+                    this.receiveCommands(res.commands);
+                }
+                return;
+            } catch (err) {
+                console.warn('pywebview.api fallback sang HTTP Bridge:', err);
+            }
+        }
+
+        // 2. Gọi qua Local HTTP IPC Bridge (/api/event)
+        try {
+            const resp = await fetch('/api/event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event: eventName, payload })
+            });
+            const data = await resp.json();
+            if (data && data.commands) {
+                this.receiveCommands(data.commands);
+            }
+        } catch (err) {
+            console.error('Lỗi kết nối Python Bridge:', err);
+        }
+    }
+
+    _initBridgeConnection() {
+        window.addEventListener('pywebviewready', () => {
+            this._sendEvent('ready');
+        });
+
+        // Gửi sự kiện ready ngay khi tải trang (hỗ trợ cả pywebview & HTTP/GTK-WebKit2)
+        setTimeout(() => {
+            this._sendEvent('ready');
+        }, 60);
+
+        // Poll định kỳ nhẹ nhàng cho trường hợp Python chủ động đẩy lệnh (như --ai auto-play từ CLI)
+        setInterval(async () => {
+            if (this.isProcessing || this.isAutoPlaying) return;
+            try {
+                const resp = await fetch('/api/poll');
+                const data = await resp.json();
+                if (data && data.commands && data.commands.length > 0) {
+                    this.receiveCommands(data.commands);
+                }
+            } catch (_) {}
+        }, 250);
+    }
+
+    receiveCommands(commands) {
+        if (!Array.isArray(commands) || commands.length === 0) return;
+        commands.forEach(cmd => this.cmdQueue.push(cmd));
+        this._processNextCommand();
+    }
+
+    _processNextCommand() {
+        if (this.isProcessing || this.cmdQueue.length === 0) return;
+        this.isProcessing = true;
+
+        const cmd = this.cmdQueue.shift();
+        const type = cmd.type;
+        const payload = cmd.payload || {};
+
+        const done = () => {
+            this.isProcessing = false;
+            this._processNextCommand();
+        };
+
+        if (type === 'load_stage') {
+            this.isAutoPlaying = false;
+            BloxorzHud.hideSolver();
+            this.renderer.loadStage(payload, done);
+        } else if (type === 'on_move') {
+            this.renderer.onMove(payload, done);
+        } else if (type === 'on_fall') {
+            this.renderer.onFall(payload, done);
+        } else if (type === 'on_win') {
+            this.renderer.onWin(payload, done);
+        } else if (type === 'set_selected') {
+            this.renderer.setSelected(payload.cube);
+            done();
+        } else if (type === 'set_biome') {
+            this.renderer.setBiome(payload.biome || 'overworld');
+            done();
+        } else if (type === 'play_solution') {
+            this._executePlaySolution(payload, done);
+        } else {
+            done();
+        }
+    }
+
+    /**
+     * HỢP ĐỒNG GIAO TIẾP 5: play_solution(actions, delay)
+     */
+    _executePlaySolution(payload, onComplete) {
+        const steps = payload.steps || [];
+        const delayMs = Math.max(40, (payload.delay || 0.22) * 1000);
+        const solver = payload.solver;
+
+        BloxorzHud.showSolver(solver);
+
+        if (steps.length === 0) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        this.isAutoPlaying = true;
+        let idx = 0;
+
+        const runStep = () => {
+            if (idx >= steps.length) {
+                this.isAutoPlaying = false;
+                if (onComplete) onComplete();
+                return;
+            }
+            const stepData = steps[idx++];
+            this.renderer.onMove(stepData, () => {
+                if (stepData.is_win) {
+                    this.renderer.onWin({ state: stepData.new_state, moves: stepData.moves }, () => {
+                        this.isAutoPlaying = false;
+                        if (onComplete) onComplete();
+                    });
+                } else {
+                    setTimeout(runStep, Math.max(10, delayMs - 160));
+                }
+            });
+        };
+
+        runStep();
+    }
+
+    setBiome(biome) {
+        this.renderer.setBiome(biome);
+    }
+
+    requestAction(actionName) {
+        if (this.isProcessing || this.isAutoPlaying || this.isSolving) return;
+        this._sendEvent('action', { action: actionName });
+    }
+
+    requestUndo() {
+        if (this.isProcessing || this.isAutoPlaying || this.isSolving) return;
+        this._sendEvent('undo');
+    }
+
+    requestRestart() {
+        if (this.isAutoPlaying || this.isSolving) return;
+        this.cmdQueue = [];
+        this.isProcessing = false;
+        this._sendEvent('restart');
+    }
+
+    requestNextStage() {
+        if (this.isAutoPlaying || this.isSolving) return;
+        this.cmdQueue = [];
+        this.isProcessing = false;
+        this._sendEvent('next_stage');
+    }
+
+    requestPrevStage() {
+        if (this.isAutoPlaying || this.isSolving) return;
+        this.cmdQueue = [];
+        this.isProcessing = false;
+        this._sendEvent('prev_stage');
+    }
+
+    async requestAISolve(algorithm = 'astar') {
+        if (this.isProcessing || this.isAutoPlaying || this.isSolving) return;
+        this.isSolving = true;
+        try {
+            await this._sendEvent('solve_ai', { algorithm });
+        } finally {
+            this.isSolving = false;
+        }
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const renderer = new VoxelSceneRenderer();
+    window.SceneBridge = new SceneProtocolClient(renderer);
+});
+</script>
+</body>
+</html>

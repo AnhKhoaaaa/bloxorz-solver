@@ -22,8 +22,6 @@ bloxorz = Entity(
     scale = (1,2,1)
 )
 
-# 3. Muốn nó di chuyển mượt mà (Hoạt ảnh)? Dùng đúng 1 hàm:
-# block.animate_position((1, 1, 0), duration=0.2)  # Trượt sang ô x=1 trong 0.2 giây!
 def update():
     bloxorz.rotation_y += 50 * time.dt
 
