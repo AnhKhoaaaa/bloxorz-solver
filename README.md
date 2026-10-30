@@ -63,6 +63,15 @@ python main.py --stages-dir stages/fixtures --text  # chơi trong terminal, khô
 - Cảnh 3D chạy bằng WebGL (Three.js). Nếu máy đã cài `pywebview` (`pip install pywebview`) thì mở trong cửa sổ riêng; nếu chưa thì tự mở trong trình duyệt mặc định. Dừng chương trình bằng `Ctrl+C` trong terminal.
 - Khi nạp cả thư mục màn: thắng xong tự sang màn tiếp theo; `N` / `P` để đổi màn, đi quá màn cuối thì quay về màn đầu.
 
+### Màn hình mở đầu
+Vào game sẽ thấy màn hình mở đầu, phía sau là cảnh 3D xoay chậm. Có 4 mục:
+- **Bắt đầu / Chơi tiếp**: vào lại màn chơi gần nhất của lần trước.
+- **Chọn màn**: các màn chia theo nhóm (G1 cơ bản, G2 ô dễ vỡ, G3 cầu & công tắc, G4 tách khối, G5 kết hợp). Màn đã tự chơi qua có dấu ✔ và số bước tốt nhất (thắng nhờ AI thì không tính).
+- **Cài đặt**: âm lượng, tắt tiếng, khung cảnh mặc định (Overworld / Nether / The End), ẩn/hiện bảng phím tắt, xoá tiến trình.
+- **Hướng dẫn**: phím điều khiển và các loại ô.
+
+Đang chơi thì bấm `Esc` hoặc nút **Menu** để mở lại menu (tạm dừng). Cài đặt và tiến trình được lưu trong trình duyệt.
+
 ### Điều khiển
 
 | Phím | Tác dụng |
@@ -74,6 +83,7 @@ python main.py --stages-dir stages/fixtures --text  # chơi trong terminal, khô
 | `N` / `P` | Màn sau / màn trước |
 | `G` | Giải màn hiện tại bằng A\* |
 | `1` / `2` / `3` | Đổi khung cảnh (Overworld / Nether / End) |
+| `Esc` | Mở / đóng menu |
 | `C` / `T` | Camera về góc mặc định / nhìn từ trên xuống |
 | `Q` / `E` | Xoay camera 45° |
 

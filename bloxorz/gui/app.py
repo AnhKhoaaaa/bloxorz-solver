@@ -11,6 +11,8 @@ Cửa sổ chính và điều phối giao diện ứng dụng.
                    scene.set_selected (fake_scene.notify_selected).
   - "undo"       : lùi 1 bước rồi vẽ lại; "restart": chơi lại màn.
   - "next_stage" / "prev_stage": sang màn sau / trước, quay vòng ở 2 đầu danh sách màn.
+  - "stage_list" : trả danh sách màn {"stages": [{index, id, name, group}], "current"} cho màn hình chọn màn.
+  - "select_stage": nhảy tới màn payload["index"] (bỏ qua nếu chỉ số không hợp lệ).
   - "solve_ai"   : giải màn hiện tại bằng thuật toán payload["algorithm"] (mặc định A*). Có lời giải thì đưa ván
     về đầu màn, đi từng bước qua controller rồi gửi play_solution {"steps", "delay", "solver"} cho WebGL phát
     lại; không có lời giải thì chỉ gửi "solver" để giao diện báo lý do (không giải được / quá thời gian / lỗi).
@@ -81,6 +83,13 @@ def make_scene(fallback: Callable[[], Scene] = TextBoardScene) -> Scene:
     return view.SceneView()
 
 
+def stage_name(stage_id: str) -> str:
+    """"stage_05" -> "STAGE 5"; id khác (màn tự tạo) giữ nguyên, viết hoa."""
+    if stage_id.startswith("stage_") and stage_id[6:].isdigit():
+        return f"STAGE {int(stage_id[6:])}"
+    return stage_id.upper()
+
+
 class WebEventRouter:
     """Nhận sự kiện từ WebGL, điều khiển GameController và báo lại cho scene (Scene Protocol + play_solution)."""
 
@@ -98,10 +107,19 @@ class WebEventRouter:
             return {"ok": True}
         if event_type == "solve_ai":
             self._solve(str(payload.get("algorithm", DEFAULT_ALGORITHM)).lower())
+        elif event_type == "stage_list":
+            with self._lock:
+                return {"ok": True, **self.stage_list()}
         else:
             with self._lock:
                 self._handle_locked(event_type, payload)
         return {"ok": True}
+
+    def stage_list(self) -> dict[str, Any]:
+        """Các màn đã nạp cho màn hình chọn màn; tên "STAGE n" giống tên cảnh 3D hiển thị."""
+        stages = [{"index": i, "id": st.id, "name": stage_name(st.id), "group": st.group}
+                  for i, st in enumerate(self.controller.stages)]
+        return {"stages": stages, "current": self.controller.index}
 
     def _handle_locked(self, event_type: str, payload: dict[str, Any]) -> None:
         controller, scene = self.controller, self.scene
@@ -147,6 +165,14 @@ class WebEventRouter:
             self._stage_version += 1
             scene.load_stage(controller.stage, controller.state)
             result = "prev"
+
+        elif event_type == "select_stage":
+            index = payload.get("index")
+            if isinstance(index, int) and not isinstance(index, bool) and 0 <= index < len(controller.stages):
+                controller.load(index)
+                self._stage_version += 1
+                scene.load_stage(controller.stage, controller.state)
+                result = "next"
 
         notify_selected(controller, scene, result)
 
