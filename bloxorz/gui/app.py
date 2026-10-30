@@ -13,6 +13,8 @@ Cửa sổ chính và điều phối giao diện ứng dụng.
   - "next_stage" / "prev_stage": sang màn sau / trước, quay vòng ở 2 đầu danh sách màn.
   - "stage_list" : trả danh sách màn {"stages": [{index, id, name, group}], "current"} cho màn hình chọn màn.
   - "select_stage": nhảy tới màn payload["index"] (bỏ qua nếu chỉ số không hợp lệ).
+  - "benchmark_trace": trả {"traces": [...]} (search.trace.collect_trace) cho payload["algorithms"] (tối đa 2)
+    trên màn hiện tại, dùng cho Benchmark Visualizer (bloxorz/gui/web/bench.js).
   - "solve_ai"   : giải màn hiện tại bằng thuật toán payload["algorithm"] (mặc định A*). Có lời giải thì đưa ván
     về đầu màn, đi từng bước qua controller rồi gửi play_solution {"steps", "delay", "solver"} cho WebGL phát
     lại; không có lời giải thì chỉ gửi "solver" để giao diện báo lý do (không giải được / quá thời gian / lỗi).
@@ -34,6 +36,7 @@ from bloxorz import search
 from bloxorz.gui.controller import GameController
 from bloxorz.gui.fake_scene import FakeScene, Scene, notify_selected, run_text
 from bloxorz.gui.solver_runner import WEB_STEP_DELAY_S, solution_steps, solver_info
+from bloxorz.search.trace import collect_trace
 from bloxorz.model import Action, Direction, State
 from bloxorz.stage import Stage
 
@@ -110,6 +113,8 @@ class WebEventRouter:
         elif event_type == "stage_list":
             with self._lock:
                 return {"ok": True, **self.stage_list()}
+        elif event_type == "benchmark_trace":
+            return {"ok": True, "traces": self.benchmark_traces(payload.get("algorithms"))}
         else:
             with self._lock:
                 self._handle_locked(event_type, payload)
@@ -120,6 +125,14 @@ class WebEventRouter:
         stages = [{"index": i, "id": st.id, "name": stage_name(st.id), "group": st.group}
                   for i, st in enumerate(self.controller.stages)]
         return {"stages": stages, "current": self.controller.index}
+
+    def benchmark_traces(self, algorithms: Any) -> list[dict[str, Any]]:
+        """Vết tìm kiếm của 1 (Single) hoặc nhiều thuật toán (Compare) trên màn hiện tại; tên lạ bị bỏ qua.
+        Chạy ngoài khóa giống solve_ai để cửa sổ không bị treo."""
+        with self._lock:
+            stage = self.controller.stage
+        names = [str(a).lower() for a in algorithms or ()]
+        return [collect_trace(name, stage) for name in names if name in search.ALGORITHMS]
 
     def _handle_locked(self, event_type: str, payload: dict[str, Any]) -> None:
         controller, scene = self.controller, self.scene

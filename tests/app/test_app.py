@@ -218,6 +218,14 @@ def test_stage_list_and_select_stage():
     assert controller.index == 2
 
 
+def test_benchmark_trace_for_current_stage(router):
+    reply = router.handle("benchmark_trace", {"algorithms": ["astar", "BFS", "nope", "dfs"]})
+    traces = reply["traces"]
+    assert [t["algorithm"] for t in traces] == ["astar", "bfs", "dfs"]  # hỗ trợ so sánh nhiều thuật toán, tên lạ bị bỏ
+    assert all(t["stage_id"] == router.controller.stage.id for t in traces)
+    assert router.handle("benchmark_trace", {})["traces"] == []
+
+
 def test_stage_name():
     from bloxorz.gui.app import stage_name
 
@@ -585,7 +593,9 @@ def test_index_renders_split_cubes_and_selection():
     assert roll.index("this.selected = moving;") < roll.index("this.applyStateTransform(oldState);")
     standalone = (ROOT / "standalone_browser.html").read_text(encoding="utf-8")
     assert standalone == html.replace('href="web/hud.css"', 'href="bloxorz/gui/web/hud.css"').replace(
-        'src="web/hud.js"', 'src="bloxorz/gui/web/hud.js"')
+        'src="web/hud.js"', 'src="bloxorz/gui/web/hud.js"').replace(
+        'href="web/bench.css"', 'href="bloxorz/gui/web/bench.css"').replace(
+        'src="web/bench.js"', 'src="bloxorz/gui/web/bench.js"')
 
 
 def test_gameplay_keys(hud_run):
@@ -638,7 +648,8 @@ def test_bridge_serves_only_vt4_web_assets():
     bridge = RendererBridge()
     base = bridge._start_local_http_server()
     try:
-        for name, kind in (("hud.css", "text/css"), ("hud.js", "application/javascript")):
+        for name, kind in (("hud.css", "text/css"), ("hud.js", "application/javascript"),
+                           ("bench.css", "text/css"), ("bench.js", "application/javascript")):
             with urllib.request.urlopen(f"{base}/web/{name}") as resp:
                 assert resp.headers["Content-Type"].startswith(kind)
                 assert resp.read() == (WEB / name).read_bytes()

@@ -58,6 +58,7 @@ def dfs(stage: Stage, ctx: SearchContext) -> tuple[Action, ...] | None:
         parents[s] = None if parent is None else (parent, action)
 
         ctx.tick()
+        ctx.observe(s, len(stack))
 
         if is_goal(s, stage):
             return reconstruct(parents, s)

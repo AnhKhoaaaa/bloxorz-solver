@@ -73,6 +73,10 @@ class SearchContext:
             if time.perf_counter() > self.deadline:
                 raise SearchAborted("timeout")
 
+    def observe(self, state: State, frontier: int, g: float | None = None) -> None:
+        """Gọi ngay sau tick() với nút vừa mở rộng, kích thước frontier và chi phí g(n).
+        Mặc định không làm gì; trace.TraceContext ghi lại cho visualizer."""
+
 # Kiểu hàm solver: nhận (stage, ctx) -> trả về tuple các Action hoặc None (nếu không giải được)
 SolverFn = Callable[[Stage, SearchContext], tuple[Action, ...] | None]
 ALGORITHMS: dict[str, SolverFn] = {}

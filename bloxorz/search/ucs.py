@@ -82,6 +82,7 @@ def ucs(stage: Stage, ctx: SearchContext) -> tuple[Action, ...] | None:
 
         # Mở rộng node
         ctx.tick()
+        ctx.observe(state, len(heap), g)
         closed.add(state)
 
         # Kiểm tra đích
