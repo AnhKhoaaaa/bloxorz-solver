@@ -456,6 +456,19 @@ global.document = {
   getElementById: el,
 };
 global.window = global;
+window.location = { pathname: "index.html", protocol: "http:" };
+global.Audio = class {
+  constructor() {
+    this.paused = true;
+    this.src = "";
+    this.loop = false;
+    this.volume = 1;
+    this.currentTime = 0;
+  }
+  addEventListener() {}
+  play() { this.paused = false; return Promise.resolve(); }
+  pause() { this.paused = true; }
+};
 const windowHandlers = {};
 window.addEventListener = (type, fn) => { windowHandlers[type] = fn; };
 global.requestAnimationFrame = () => 1;

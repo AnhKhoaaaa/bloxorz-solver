@@ -327,13 +327,15 @@
             let file = name;
             if (file === "nether") file = "neither";
             if (file === "credits") file = "credit";
-            const base = (window.location.pathname.includes("standalone_browser.html"))
+            const loc = (typeof window !== "undefined" && window.location) ? window.location : { pathname: "", protocol: "" };
+            const base = (loc.pathname && loc.pathname.includes("standalone_browser.html"))
                 ? "bloxorz/gui/"
-                : (window.location.protocol === "file:" ? "../" : "gui/");
+                : (loc.protocol === "file:" ? "../" : "gui/");
             return `${base}${file}.mp3`;
         },
 
         init() {
+            if (typeof Audio === "undefined") return;
             if (!this.bgm) {
                 this.bgm = new Audio();
                 this.bgm.loop = true;
