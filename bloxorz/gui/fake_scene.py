@@ -6,7 +6,7 @@ Mock scene dùng cho việc kiểm thử UI khi không có 3D.
   đủ các hàm này để thay thế FakeScene.
 - FakeScene: cảnh giả, ghi lại các sự kiện (dùng trong test) và vẽ màn chơi bằng ký tự.
 - KeyBuffer: chặn phím khi scene đang diễn hoạt, giữ lại tối đa 1 phím để chạy khi hoạt ảnh xong.
-- run_text(): chơi tay ngay trong terminal, không cần Ursina (python main.py --text).
+- run_text(): chơi tay ngay trong terminal, không cần đồ họa (python main.py --text).
 """
 
 from __future__ import annotations

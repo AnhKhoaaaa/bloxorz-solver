@@ -11,7 +11,7 @@ Tiến trình chạy solver ngầm và replay lời giải.
 - solver_info() / solution_steps(): dữ liệu cho cảnh WebGL khi bấm nút giải AI (huy hiệu kết quả và các bước
   lời giải để WebGL phát lại), app.WebEventRouter gửi đi qua lệnh play_solution.
 
-Module này KHÔNG import Ursina (giống controller.py) để test được không cần đồ họa;
+Module này thuần logic (giống controller.py) để test được không cần đồ họa;
 app.py gọi SolverSession.handle_key() khi có phím và SolverSession.update(dt) mỗi frame.
 """
 

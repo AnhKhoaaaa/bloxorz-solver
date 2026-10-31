@@ -21,7 +21,7 @@ Cửa sổ chính và điều phối giao diện ứng dụng.
     Bridge xử lý mỗi request trên 1 luồng, nên solver chạy ngoài khóa; trong lúc chờ, sự kiện khác vẫn được xử lý
     (có khóa). Kết quả chỉ được dùng nếu vẫn ở đúng màn đã giải và không có lượt giải mới hơn; ngược lại bị bỏ.
   Mọi sự kiện trả {"ok": True}; bridge tự gửi kèm các lệnh vẽ mà scene vừa đẩy.
-Zero OpenGL & Zero Ursina bloat.
+Zero OpenGL & Zero legacy bloat.
 """
 
 from __future__ import annotations
