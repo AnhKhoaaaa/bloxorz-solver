@@ -3,8 +3,8 @@
 Bộ điều khiển phím di chuyển và chuyển khối.
 
 GameController giữ trạng thái 1 ván chơi tay (màn hiện tại, State, số bước, lịch sử để undo)
-và gọi engine để lăn khối. Module này KHÔNG import Ursina để test được không cần đồ họa;
-app.py (Ursina) và fake_scene.py (chế độ chữ) chỉ chuyển phím vào handle_key().
+và gọi engine để lăn khối. Module này thuần logic để test được không cần đồ họa;
+app.py (WebGL) và fake_scene.py (chế độ chữ) chỉ chuyển phím vào handle_key().
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ Status = Literal["playing", "won", "fell"]
 Outcome = Literal["moved", "won", "fell", "ignored"]
 SplitEvent = Literal["split", "merge"]
 
-# Tên phím theo Ursina; chế độ chữ dùng chung các chữ cái w/a/s/d
+# Tên phím theo chuẩn hướng; chế độ chữ dùng chung các chữ cái w/a/s/d
 KEY_DIRECTIONS: dict[str, Direction] = {
     "up arrow": Direction.UP, "w": Direction.UP,
     "down arrow": Direction.DOWN, "s": Direction.DOWN,

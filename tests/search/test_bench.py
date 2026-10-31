@@ -25,12 +25,13 @@ def test_bench_parser_defaults():
     assert args.out == "results/run.csv"
 
 
-def test_bench_no_ursina_dependency():
-    """Đảm bảo gói benchmark chạy headless hoàn toàn, không có import ursina."""
+def test_bench_no_gui_dependency():
+    """Đảm bảo gói benchmark chạy headless hoàn toàn, không có import đồ họa hay ursina."""
     bench_dir = Path("benchmark")
     for py_file in bench_dir.glob("*.py"):
         content = py_file.read_text(encoding="utf-8")
         assert "ursina" not in content.lower(), f"Phát hiện import ursina trong {py_file}!"
+        assert "matplotlib.pyplot" not in content.lower() or "agg" in content.lower()
 
 
 def test_bench_load_all_stages_fixtures():

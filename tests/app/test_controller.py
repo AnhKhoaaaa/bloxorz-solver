@@ -7,7 +7,7 @@ Kiểm thử khung ứng dụng chơi tay - Task 4.2
 - Issue #12: chọn cube khi khối tách; #13: KeyBuffer khi scene diễn hoạt; #14: make_scene báo lỗi view.py.
 - Task 4.4: nhớ cube đang chọn theo vị trí (selected_pos), event "split" / "merge", Space không tính nước đi,
   scene.set_selected nhận đúng cube cần tô sáng.
-Không cần Ursina.
+Không cần môi trường đồ họa.
 """
 
 import sys
@@ -304,7 +304,7 @@ def test_active_cube_follows_moved_cube_after_reorder():
 
 def test_scene_view_protocol_contract():
     """Kiểm tra SceneView đáp ứng đầy đủ chữ ký phương thức của Scene Protocol (is_animating, load_stage, on_move, on_fall, on_win)."""
-    # Import không cần Ursina runtime vì chỉ kiểm tra chữ ký method
+    # Import không cần môi trường đồ họa vì chỉ kiểm tra chữ ký method
     import inspect
     from bloxorz.gui.fake_scene import Scene
     from bloxorz.gui.scene.view import SceneView

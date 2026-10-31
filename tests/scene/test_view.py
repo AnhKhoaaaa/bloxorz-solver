@@ -1,5 +1,5 @@
 """
-Kiểm thử SceneView không cần cửa sổ Ursina - Task 3.2
+Kiểm thử SceneView không cần cửa sổ đồ họa - Task 3.2
 - Khi khối tách, viên vừa đi lăn tới đúng ô kể cả khi State đổi chỗ pos/cube2.
 """
 

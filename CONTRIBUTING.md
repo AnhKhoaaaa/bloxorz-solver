@@ -86,8 +86,8 @@ git push -u origin feat/<mã_task>-<mô tả ngắn>
 ---
 
 ## 4. Quy Tắc Code (Code Rules)
-1. **Không import Ursina ngoài `bloxorz/gui/`:**
-   - Các module logic (`bloxorz/model.py`, `bloxorz/stage.py`, `bloxorz/engine/`, `bloxorz/search/`, `benchmark/`, `tests/`) tuyệt đối không import Ursina để đảm bảo logic chạy độc lập không phụ thuộc môi trường đồ họa.
+1. **Đảm bảo tính độc lập của logic:**
+   - Các module logic (`bloxorz/model.py`, `bloxorz/stage.py`, `bloxorz/engine/`, `bloxorz/search/`, `benchmark/`, `tests/`) tuyệt đối không phụ thuộc môi trường đồ họa để đảm bảo logic chạy độc lập (headless).
 2. **Không sửa test chỉ để test xanh:**
    - Nếu test fail, phải tìm nguyên nhân từ logic triển khai hoặc trao đổi với người viết test.
 3. **Quản lý dependencies:**

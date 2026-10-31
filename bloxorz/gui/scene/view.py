@@ -20,7 +20,7 @@ def animate_roll(
 class SceneView:
     """Single-Engine 3D SceneView:
     - Primary Engine: High-fidelity WebGL Three.js Desktop Micro-Renderer.
-    - Zero OpenGL & Zero Ursina bloat (YAGNI & KISS compliant).
+    - Zero OpenGL & Zero legacy bloat (YAGNI & KISS compliant).
     """
 
     def __init__(self, bridge: Optional[RendererBridge] = None, audio_enabled: bool = True) -> None:
