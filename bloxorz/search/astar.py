@@ -37,6 +37,7 @@ def best_first(stage: Stage, ctx: SearchContext, heuristic: Heuristic) -> tuple[
         if cost != g_best[state]:
             continue
         ctx.tick()
+        ctx.observe(state, len(heap), cost)
         if is_goal(state, stage):
             return reconstruct(parents, state)
         actions = _SPLIT_ACTIONS if state.pose is None else _ACTIONS

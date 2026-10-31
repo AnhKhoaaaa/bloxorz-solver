@@ -14,7 +14,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 # Giao diện 2D + phím chơi tay của VT4, index.html tải qua /web/<tên file>
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
-WEB_ASSETS = {"hud.css": "text/css; charset=utf-8", "hud.js": "application/javascript; charset=utf-8"}
+WEB_ASSETS = {"hud.css": "text/css; charset=utf-8", "hud.js": "application/javascript; charset=utf-8",
+              "bench.css": "text/css; charset=utf-8", "bench.js": "application/javascript; charset=utf-8"}
 
 
 def stage_to_dict(stg: Any) -> Dict[str, Any]:

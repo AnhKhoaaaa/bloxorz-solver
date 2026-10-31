@@ -35,6 +35,7 @@ def bfs(stage: Stage, ctx: SearchContext) -> tuple[Action, ...] | None:
     while frontier:
         curr = frontier.popleft()
         ctx.tick()
+        ctx.observe(curr, len(frontier))
 
         for action in get_available_actions(curr):
             nxt = step(curr, action, stage)
