@@ -234,6 +234,12 @@ class SceneView:
         if bridge is not None:
             bridge.run_window(title=title, width=width, height=height)
 
+    def close(self) -> None:
+        """Đóng giao diện hiển thị nếu đang chạy."""
+        bridge = getattr(self, "bridge", None)
+        if bridge is not None and hasattr(bridge, "close"):
+            bridge.close()
+
     def run_window(self, title: str = "Bloxorz: Voxel Edition (WebGL 3D)") -> None:
         """Launch Single Engine 3D Window (WebGL Three.js)."""
         self.run_webgl(title=title)

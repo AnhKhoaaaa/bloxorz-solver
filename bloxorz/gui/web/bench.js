@@ -460,14 +460,20 @@
             this.el("bench-view-next").addEventListener("click", () => this.switchActiveLaneRel(1));
             this.el("bench-view-select").addEventListener("change", (e) => this.setActiveLane(Number(e.target.value)));
 
-            const bar = document.querySelector(".controls-bar");
-            if (bar) {
-                const btn = document.createElement("button");
-                btn.className = "mc-btn ai-btn";
-                btn.textContent = "Benchmark Studio";
-                btn.title = "Mở Visualizer Thuật Toán (Engineering Terminal)";
-                btn.addEventListener("click", () => this.open());
-                bar.appendChild(btn);
+            const existingBtn = document.getElementById("btn-bench-studio");
+            if (existingBtn) {
+                existingBtn.addEventListener("click", () => this.open());
+            } else {
+                const bar = document.getElementById("ai-biomes-group") || document.querySelector(".controls-bar");
+                if (bar) {
+                    const btn = document.createElement("button");
+                    btn.id = "btn-bench-studio";
+                    btn.className = "mc-btn ai-btn";
+                    btn.textContent = "Benchmark Studio";
+                    btn.title = "Mở Visualizer Thuật Toán (Engineering Terminal)";
+                    btn.addEventListener("click", () => this.open());
+                    bar.appendChild(btn);
+                }
             }
 
             window.addEventListener("keydown", (e) => {

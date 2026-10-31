@@ -659,3 +659,17 @@ def test_bridge_serves_only_vt4_web_assets():
             assert err.value.code == 404
     finally:
         bridge._http_server.shutdown()
+
+
+def test_quit_event_triggers_scene_close():
+    closed = []
+
+    class DummyScene:
+        def close(self):
+            closed.append(True)
+
+    router = WebEventRouter(GameController(stages()), DummyScene())
+    res = router.handle("quit", {})
+    assert res == {"ok": True}
+    assert closed == [True]
+

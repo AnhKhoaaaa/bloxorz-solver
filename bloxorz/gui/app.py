@@ -115,6 +115,10 @@ class WebEventRouter:
                 return {"ok": True, **self.stage_list()}
         elif event_type == "benchmark_trace":
             return {"ok": True, "traces": self.benchmark_traces(payload.get("algorithms"))}
+        elif event_type == "quit":
+            if hasattr(self.scene, "close") and callable(self.scene.close):
+                self.scene.close()
+            return {"ok": True}
         else:
             with self._lock:
                 self._handle_locked(event_type, payload)
@@ -156,6 +160,20 @@ class WebEventRouter:
                     scene.on_move(old, action, controller.state)
                     if result == "won":
                         scene.on_win(controller.state)
+
+        elif event_type == "sfx":
+            audio = getattr(scene, "audio", None)
+            if audio is not None:
+                snd = str(payload.get("sound", "step"))
+                if snd == "step":
+                    if payload.get("bridges_changed"):
+                        audio.play_switch()
+                    else:
+                        audio.play_step()
+                elif snd == "win":
+                    audio.play_win()
+                elif snd == "fall":
+                    audio.play_fall()
 
         elif event_type == "undo":
             if controller.undo():
