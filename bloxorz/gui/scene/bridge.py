@@ -15,7 +15,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 # Giao diện 2D + phím chơi tay của VT4, index.html tải qua /web/<tên file>
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 WEB_ASSETS = {"hud.css": "text/css; charset=utf-8", "hud.js": "application/javascript; charset=utf-8",
-              "bench.css": "text/css; charset=utf-8", "bench.js": "application/javascript; charset=utf-8"}
+              "bench.css": "text/css; charset=utf-8", "bench.js": "application/javascript; charset=utf-8",
+              "minecraft-f2d-v1-42.otf": "font/otf", "achieve.png": "image/png"}
 
 
 def stage_to_dict(stg: Any) -> Dict[str, Any]:
@@ -154,6 +155,9 @@ class PyWebViewJsApi:
 
     def on_solve_ai(self, algorithm: str = "astar") -> Dict[str, Any]:
         return self._bridge.handle_client_event("solve_ai", {"algorithm": algorithm})
+
+    def on_sfx(self, sound_type: str = "step", bridges_changed: bool = False) -> Dict[str, Any]:
+        return self._bridge.handle_client_event("sfx", {"sound": sound_type, "bridges_changed": bridges_changed})
 
     def poll_commands(self) -> List[Dict[str, Any]]:
         return self._bridge.drain_commands()
@@ -323,6 +327,24 @@ class RendererBridge:
                         self.wfile.write(content)
                     else:
                         self.send_error(404)
+                elif self.path.startswith("/gui/"):
+                    name = self.path[len("/gui/"):]
+                    asset = WEB_DIR.parent / name
+                    if not asset.is_file() and name == "nether.mp3":
+                        asset = WEB_DIR.parent / "neither.mp3"
+                    if not asset.is_file() and name == "credits.mp3":
+                        asset = WEB_DIR.parent / "credit.mp3"
+                    if asset.is_file() and asset.suffix.lower() in (".mp3", ".ogg", ".wav"):
+                        ext = asset.suffix.lower()
+                        mime = "audio/mpeg" if ext == ".mp3" else ("audio/ogg" if ext == ".ogg" else "audio/wav")
+                        content = asset.read_bytes()
+                        self.send_response(200)
+                        self.send_header("Content-Type", mime)
+                        self.send_header("Content-Length", str(len(content)))
+                        self.end_headers()
+                        self.wfile.write(content)
+                    else:
+                        self.send_error(404)
                 elif self.path == "/api/poll":
                     cmds = bridge_ref.drain_commands()
                     body = json.dumps({"commands": cmds}, ensure_ascii=False).encode("utf-8")
@@ -361,6 +383,21 @@ class RendererBridge:
         thread = threading.Thread(target=self._http_server.serve_forever, daemon=True)
         thread.start()
         return f"http://127.0.0.1:{self._server_port}"
+
+    def close(self) -> None:
+        """Đóng cửa sổ giao diện native nếu đang chạy."""
+        if getattr(self, "_webview_window", None):
+            try:
+                self._webview_window.destroy()
+            except Exception:
+                pass
+        try:
+            import gi  # type: ignore
+            gi.require_version("Gtk", "3.0")
+            from gi.repository import Gtk  # type: ignore
+            Gtk.main_quit()
+        except Exception:
+            pass
 
     def run_window(
         self,

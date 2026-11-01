@@ -17,48 +17,59 @@
     const HUD_MARKUP = `
 <div class="ui-layer">
     <div class="top-bar">
-        <div class="mc-panel title-box">
-            <h1>BLOXORZ: VOXEL EDITION</h1>
-            <div class="stage-title" id="ui-stage-name">STAGE 1: KHỞI ĐẦU CỔNG END</div>
-            <div class="stats-row">
-                <div>STAGE: <span id="ui-stage" style="color:#55ffff">1/6</span></div>
-                <div>MOVES: <span id="ui-moves" style="color:#ffaa00">0</span></div>
-                <div id="ui-cube"></div>
-                <div id="ui-ai-badge">AI A*: 0 moves</div>
+        <!-- Corner 1: Top-Left (Stage Info) -->
+        <div class="top-bar-left">
+            <div class="mc-panel title-box">
+                <h1>BLOXORZ: VOXEL EDITION</h1>
+                <div class="stage-title" id="ui-stage-name">STAGE 1: KHỞI ĐẦU CỔNG END</div>
+                <div class="stats-row">
+                    <div>STAGE: <span id="ui-stage" style="color:#55ffff">1/6</span></div>
+                    <div>MOVES: <span id="ui-moves" style="color:#ffaa00">0</span></div>
+                    <div id="ui-cube"></div>
+                    <div id="ui-ai-badge">AI A*: 0 moves</div>
+                </div>
             </div>
         </div>
 
-        <div class="mc-panel controls-bar">
-            <button class="mc-btn active" id="btn-overworld" onclick="SceneBridge.setBiome('overworld')">Overworld</button>
-            <button class="mc-btn biome-nether" id="btn-nether" onclick="SceneBridge.setBiome('nether')">Nether</button>
-            <button class="mc-btn biome-end" id="btn-end" onclick="SceneBridge.setBiome('end')">The End</button>
-            <span style="color:#555">|</span>
-            <button class="mc-btn ai-btn" onclick="SceneBridge.requestAISolve('astar')" title="Giải tự động bằng thuật toán A*">AI Solve (A*)</button>
-            <button class="mc-btn ai-btn" onclick="SceneBridge.requestAISolve('bfs')" title="Giải tự động bằng thuật toán BFS">AI Solve (BFS)</button>
-            <button class="mc-btn ai-btn" onclick="SceneBridge.requestAISolve('dfs')" title="Giải tự động bằng thuật toán DFS">AI Solve (DFS)</button>
-            <button class="mc-btn ai-btn" onclick="SceneBridge.requestAISolve('ucs')" title="Giải tự động bằng thuật toán UCS">AI Solve (UCS)</button>
-            <span style="color:#555">|</span>
-            <button class="mc-btn" onclick="SceneBridge.requestUndo()">Undo (U)</button>
-            <button class="mc-btn" onclick="SceneBridge.requestRestart()">Restart (R)</button>
-            <button class="mc-btn" onclick="SceneBridge.requestPrevStage()">&lt; Prev (P)</button>
-            <button class="mc-btn" onclick="SceneBridge.requestNextStage()">Next (N) &gt;</button>
-            <span style="color:#555">|</span>
-            <button class="mc-btn" onclick="BloxorzMenu.open('pause')">Menu (Esc)</button>
+        <!-- Corner 2: Top-Right (Gameplay Actions) -->
+        <div class="top-bar-right">
+            <div class="mc-panel gameplay-bar">
+                <div class="gameplay-row">
+                    <button class="mc-btn" onclick="SceneBridge.requestUndo()">Undo (U)</button>
+                    <button class="mc-btn" onclick="SceneBridge.requestRestart()">Restart (R)</button>
+                </div>
+                <div class="gameplay-row">
+                    <button class="mc-btn" onclick="SceneBridge.requestPrevStage()">&lt; Prev (P)</button>
+                    <button class="mc-btn" onclick="SceneBridge.requestNextStage()">Next (N) &gt;</button>
+                    <button class="mc-btn" onclick="BloxorzMenu.open('pause')">Menu (Esc)</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="bottom-bar">
+        <!-- Corner 3: Bottom-Left (Help Shortcuts) -->
         <div class="mc-panel help-panel">
-            <div><span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> / <span class="key-badge">ARROWS</span> : LẬT KHỐI GỖ SỒI &nbsp; <span class="key-badge">SPACE</span> : ĐỔI KHỐI KHI TÁCH &nbsp; <span class="key-badge">G</span> : AI SOLVE (A*)</div>
-            <div><span class="key-badge">U</span> : HOÀN TÁC &nbsp; <span class="key-badge">R</span> : CHƠI LẠI &nbsp; <span class="key-badge">P</span>/<span class="key-badge">N</span> : ĐỔI MÀN &nbsp; <span class="key-badge">1</span><span class="key-badge">2</span><span class="key-badge">3</span> : BIOME</div>
-            <div><span class="key-badge">CHUỘT TRÁI + KÉO</span> : GIMBAL ORBIT &nbsp; <span class="key-badge">CON LĂN</span> : ZOOM &nbsp; <span class="key-badge">C</span>/<span class="key-badge">T</span>/<span class="key-badge">Q</span>/<span class="key-badge">E</span> : GÓC CAM</div>
+            <div><span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> / <span class="key-badge">ARROWS</span> : LẬT KHỐI GỖ SỒI &nbsp; <span class="key-badge">SPACE</span> : ĐỔI KHỐI KHI TÁCH</div>
+            <div><span class="key-badge">U</span> : HOÀN TÁC &nbsp; <span class="key-badge">R</span> : CHƠI LẠI &nbsp; <span class="key-badge">P</span>/<span class="key-badge">N</span> : ĐỔI MÀN &nbsp; <span class="key-badge">G</span> : AI SOLVE (A*)</div>
+            <div><span class="key-badge">CHUỘT TRÁI + KÉO</span> : GIMBAL ORBIT &nbsp; <span class="key-badge">CON LĂN</span> : ZOOM &nbsp; <span class="key-badge">1</span><span class="key-badge">2</span><span class="key-badge">3</span> : BIOME</div>
         </div>
-        <div class="mc-panel help-panel" style="text-align: right;">
-            <div style="color:#ffaa00">CHÚ THÍCH BÀN ĐẠP VOXEL (MINECRAFT):</div>
-            <div>BÀN ĐẠP SẮT (x): Iron Slab (Cần khối đứng thẳng đè nặng)</div>
-            <div>BÀN ĐẠP VÀNG (S): Golden Slab (Tách đôi thành 2 khối 1x1)</div>
-            <div>BÀN ĐẠP GỖ (o): Oak Slab (Chạm nhẹ bất kỳ là kích hoạt)</div>
-            <div>CÁT CAM (! / F): Vỡ nếu đứng thẳng lên trên</div>
+
+        <!-- Corner 4: Bottom-Right (AI Solvers & Biomes) -->
+        <div class="mc-panel ai-bar">
+            <div class="ai-bar-title">AI SOLVERS &amp; BIOMES</div>
+            <div class="mc-btn-grid-ai" id="ai-solvers-group">
+                <button class="mc-btn ai-btn" onclick="SceneBridge.requestAISolve('astar')" title="Giải tự động bằng thuật toán A*">AI Solve (A*)</button>
+                <button class="mc-btn ai-btn" onclick="SceneBridge.requestAISolve('bfs')" title="Giải tự động bằng thuật toán BFS">AI Solve (BFS)</button>
+                <button class="mc-btn ai-btn" onclick="SceneBridge.requestAISolve('dfs')" title="Giải tự động bằng thuật toán DFS">AI Solve (DFS)</button>
+                <button class="mc-btn ai-btn" onclick="SceneBridge.requestAISolve('ucs')" title="Giải tự động bằng thuật toán UCS">AI Solve (UCS)</button>
+            </div>
+            <div class="mc-btn-row-biomes" id="ai-biomes-group" style="margin-top: 5px;">
+                <button class="mc-btn active" id="btn-overworld" onclick="SceneBridge.setBiome('overworld')">Overworld</button>
+                <button class="mc-btn biome-nether" id="btn-nether" onclick="SceneBridge.setBiome('nether')">Nether</button>
+                <button class="mc-btn biome-end" id="btn-end" onclick="SceneBridge.setBiome('end')">The End</button>
+            </div>
+            <button class="mc-btn ai-btn mc-btn-bench-full" id="btn-bench-studio" onclick="window.BloxorzBench &amp;&amp; BloxorzBench.open()" title="Mở Visualizer Thuật Toán (Engineering Terminal)">Benchmark Studio</button>
         </div>
     </div>
 </div>
@@ -78,9 +89,10 @@
         <div class="mc-menu-buttons">
             <button class="mc-btn mc-btn-wide mc-btn-play" id="menu-play">Bắt đầu</button>
             <button class="mc-btn mc-btn-wide" data-go="levels">Chọn màn</button>
+            <button class="mc-btn mc-btn-wide" data-go="help">Hướng dẫn</button>
             <div class="mc-btn-row">
                 <button class="mc-btn" data-go="settings">Cài đặt</button>
-                <button class="mc-btn" data-go="help">Hướng dẫn</button>
+                <button class="mc-btn" id="menu-quit">Thoát game</button>
             </div>
         </div>
         <div class="mc-footer">
@@ -110,6 +122,7 @@
                 <span class="mc-slider-label" id="set-volume-label">ÂM LƯỢNG: 80%</span>
             </label>
             <button class="mc-btn mc-btn-wide" id="set-mute">Âm thanh: Bật</button>
+            <button class="mc-btn mc-btn-wide" id="set-bgm">Nhạc nền: Tắt</button>
             <div class="mc-setting-label">KHUNG CẢNH MẶC ĐỊNH</div>
             <div class="mc-btn-row mc-btn-row-3">
                 <button class="mc-btn" data-biome="overworld">Overworld</button>
@@ -132,6 +145,7 @@
                 <div><span class="key-badge">U</span> <span class="key-badge">R</span></div><div>Hoàn tác 1 bước / Chơi lại màn</div>
                 <div><span class="key-badge">P</span> <span class="key-badge">N</span></div><div>Màn trước / Màn sau</div>
                 <div><span class="key-badge">G</span></div><div>AI giải bằng A* (nút trên màn hình: A*, BFS, DFS, UCS)</div>
+                <div><span class="key-badge">M</span></div><div>Bật/tắt nhạc nền (BGM)</div>
                 <div><span class="key-badge">1</span> <span class="key-badge">2</span> <span class="key-badge">3</span></div><div>Overworld / Nether / The End</div>
                 <div><span class="key-badge">C T Q E</span> <span class="key-badge">CHUỘT</span></div><div>Góc camera, kéo để xoay, con lăn để zoom</div>
                 <div><span class="key-badge">ESC</span></div><div>Mở menu</div>
@@ -148,6 +162,46 @@
         <button class="mc-btn mc-btn-wide" data-go="back">Xong</button>
     </section>
 </div>
+
+<div class="mc-toast" id="mc-end-toast" title="Achievement Made! The End?"></div>
+
+<div class="mc-credits-overlay" id="mc-credits">
+    <button class="mc-btn mc-credits-skip" onclick="BloxorzHud.hideEndCredits()">Bỏ qua (ESC)</button>
+    <div class="mc-credits-scroll">
+        <div class="mc-credits-logo">BLOXORZ: VOXEL EDITION</div>
+        <div class="mc-credits-sub">CHÚC MỪNG BẠN ĐÃ VƯỢT QUA TOÀN BỘ 33 MÀN CHƠI!</div>
+        <div class="mc-credits-poem">
+            <p>Và vũ trụ thì thầm rằng bạn đã làm rất tốt.</p>
+            <p>Và vũ trụ thì thầm rằng mọi thứ bạn cần đều ở trong bạn.</p>
+            <p>Bạn là người chơi, lật từng khối gỗ qua miền hư vô.</p>
+            <p>Từ đồng cỏ Overworld thanh bình...</p>
+            <p>Vượt qua biển dung nham rực lửa của cõi Nether...</p>
+            <p>Cho đến đĩa đá huyền bí của The End.</p>
+            <br>
+            <p>Bạn đã đồng hành cùng các thuật toán tìm kiếm:</p>
+            <p class="mc-credits-accent">BFS · DFS · UCS · A* HEURISTIC</p>
+            <br>
+            <p>Tất cả thử thách đã được giải mã trọn vẹn.</p>
+            <p>Và giấc mơ kết thúc, người chơi thức giấc.</p>
+            <br>
+            <p class="mc-credits-gold">THE END...?</p>
+            <br>
+            <p class="mc-credits-gold">NHÓM SINH VIÊN THỰC HIỆN</p>
+            <div class="mc-credits-team">
+                <p><span class="mc-credits-accent">24120072 · Lê Công Anh Khoa</span><br>Trưởng nhóm · Kiến trúc Core &amp; Thuật toán BFS/DFS</p>
+                <p><span class="mc-credits-accent">24120318 · Trịnh Văn Hợp</span><br>Mô phỏng Môi trường &amp; Luật chơi (Engine Game)</p>
+                <p><span class="mc-credits-accent">24120472 · Trương Huệ Trí</span><br>Cảnh 3D WebGL, Hoạt ảnh Voxel &amp; Trực quan hóa Thuật toán</p>
+                <p><span class="mc-credits-accent">24120334 · Hoàng Khang</span><br>Điều phối Ứng dụng, Giao diện Người dùng &amp; Màn chơi</p>
+                <p><span class="mc-credits-accent">24120372 · Nguyễn Hữu Hoàng Long</span><br>Thuật toán UCS, A* Heuristic &amp; Thực nghiệm Benchmark</p>
+            </div>
+            <br>
+            <p>ĐỒ ÁN CƠ SỞ TRÍ TUỆ NHÂN TẠO</p>
+            <p>TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN - ĐHQG-HCM</p>
+            <br>
+            <p>Cảm ơn bạn đã trải nghiệm trò chơi!</p>
+        </div>
+    </div>
+</div>
 `;
 
     const BloxorzHud = {
@@ -158,6 +212,8 @@
         },
 
         updateStats(stageName, stageIdx, totalStages, moves) {
+            this.stageIdx = stageIdx;
+            this.totalStages = totalStages;
             BloxorzMenu.onStage(stageIdx - 1);
             if (stageName) document.getElementById("ui-stage-name").innerText = stageName;
             document.getElementById("ui-stage").innerText = `${stageIdx}/${totalStages}`;
@@ -174,6 +230,9 @@
             document.getElementById("btn-overworld").classList.toggle("active", biomeName === "overworld");
             document.getElementById("btn-nether").classList.toggle("active", biomeName === "nether");
             document.getElementById("btn-end").classList.toggle("active", biomeName === "end");
+            if (typeof BloxorzAudio !== "undefined") {
+                BloxorzAudio.setBiomeTrack(biomeName);
+            }
         },
 
         /** Khối đang điều khiển khi khối tách (0 / 1); null: khối chưa tách, ẩn nhãn. */
@@ -208,10 +267,38 @@
             document.getElementById("banner-msg").classList.remove("show");
         },
 
-        /** Hoạt ảnh thắng của cảnh đã xong: tự sang màn sau. */
+        /** Hoạt ảnh thắng của cảnh đã xong: tự sang màn sau hoặc mở màn kết thúc nếu là màn 33. */
         afterWin(client) {
             if (!this.aiPlaying) BloxorzMenu.recordWin(Number(document.getElementById("ui-moves").innerText));
+            if (this.stageIdx && this.totalStages && this.stageIdx >= this.totalStages) {
+                this.showEndCredits();
+                return;
+            }
             client.requestNextStage();
+        },
+
+        showEndCredits() {
+            const toast = document.getElementById("mc-end-toast");
+            if (toast) {
+                toast.classList.add("show");
+                setTimeout(() => toast.classList.remove("show"), 6000);
+            }
+            const credits = document.getElementById("mc-credits");
+            if (credits) {
+                credits.classList.add("show");
+                if (typeof BloxorzAudio !== "undefined") {
+                    BloxorzAudio.playCreditsMusic();
+                }
+            }
+        },
+
+        hideEndCredits() {
+            const credits = document.getElementById("mc-credits");
+            if (credits) credits.classList.remove("show");
+            if (typeof BloxorzAudio !== "undefined") {
+                BloxorzAudio.setBiomeTrack(BloxorzMenu.settings.biome || "overworld");
+            }
+            BloxorzMenu.open("title");
         },
     };
 
@@ -227,11 +314,115 @@
         p: (c) => c.requestPrevStage(),
         " ": (c) => c.requestAction("SWITCH"),  // đổi khối đang điều khiển khi khối đã tách (như chơi trong terminal)
         g: (c) => c.requestAISolve("astar"),
+        m: () => BloxorzAudio.toggleBGM(),
+    };
+
+    const BloxorzAudio = {
+        bgm: null,
+        bgmEnabled: true,
+        volume: 0.35,
+        currentBiome: "overworld",
+
+        _getTrackUrl(name) {
+            let file = name;
+            if (file === "nether") file = "neither";
+            if (file === "credits") file = "credit";
+            const loc = (typeof window !== "undefined" && window.location) ? window.location : { pathname: "", protocol: "" };
+            const base = (loc.pathname && loc.pathname.includes("standalone_browser.html"))
+                ? "bloxorz/gui/"
+                : (loc.protocol === "file:" ? "../" : "gui/");
+            return `${base}${file}.mp3`;
+        },
+
+        init() {
+            if (typeof Audio === "undefined") return;
+            if (!this.bgm) {
+                this.bgm = new Audio();
+                this.bgm.loop = true;
+                this.bgm.volume = this.volume;
+                this.bgm.src = this._getTrackUrl(this.currentBiome);
+                this.bgm.addEventListener("ended", () => {
+                    if (this.bgmEnabled) {
+                        this.bgm.play().catch(() => {});
+                    }
+                });
+                this.bgm.addEventListener("error", () => {});
+            }
+        },
+
+        setBiomeTrack(biomeName) {
+            let track = (biomeName || "overworld").toLowerCase();
+            if (track === "nether") track = "neither";
+            // Giữ nguyên nguồn nhạc nếu cùng biome và đang phát, không reset src để tránh giật/phát lại từ đầu
+            if (this.currentBiome === track && this.bgm) {
+                if (this.bgmEnabled && this.bgm.paused) {
+                    this.bgm.play().catch(() => {});
+                }
+                return;
+            }
+            this.currentBiome = track;
+            const targetSrc = this._getTrackUrl(track);
+            if (this.bgm) {
+                const wasPlaying = !this.bgm.paused;
+                this.bgm.src = targetSrc;
+                if (this.bgmEnabled && (wasPlaying || !this.bgm.currentTime)) {
+                    this.bgm.play().catch(() => {});
+                }
+            }
+        },
+
+        playCreditsMusic() {
+            this.currentBiome = "credits";
+            if (this.bgm) {
+                this.bgm.src = this._getTrackUrl("credit");
+                if (this.bgmEnabled) {
+                    this.bgm.play().catch(() => {});
+                }
+            }
+        },
+
+        toggleBGM() {
+            this.init();
+            this.bgmEnabled = !this.bgmEnabled;
+            if (window.BloxorzMenu && window.BloxorzMenu.settings) {
+                window.BloxorzMenu.settings.bgm = this.bgmEnabled;
+                window.BloxorzMenu.save();
+            }
+            if (this.bgmEnabled) {
+                this.bgm.play().catch((err) => {
+                    console.log("Autoplay prevented:", err);
+                });
+            } else {
+                this.bgm.pause();
+            }
+            this.updateUI();
+            return this.bgmEnabled;
+        },
+
+        setVolume(volPercent) {
+            this.volume = (Math.max(0, Math.min(100, volPercent)) / 100) * 0.40;
+            if (this.bgm) this.bgm.volume = this.volume;
+        },
+
+        updateUI() {
+            const setBtn = document.getElementById("set-bgm");
+            if (setBtn) {
+                setBtn.innerText = `Nhạc nền: ${this.bgmEnabled ? "Bật" : "Tắt"}`;
+            }
+        }
     };
 
     const BloxorzInput = {
         /** Xử lý 1 phím chơi tay; bỏ qua khi cảnh đang diễn hoạt, đang chờ solver hoặc đang phát lời giải. */
         handleKey(event, client) {
+            const credits = document.getElementById("mc-credits");
+            if (credits && credits.classList.contains("show")) {
+                if (event.key === "Escape" || event.key === " " || event.key === "Enter") {
+                    event.preventDefault();
+                    BloxorzHud.hideEndCredits();
+                    return true;
+                }
+            }
             if (event.key === "Escape") {
                 event.preventDefault();
                 BloxorzMenu.toggle();
@@ -249,7 +440,7 @@
 
     const SETTINGS_KEY = "bloxorz.settings.v1";
     const PROGRESS_KEY = "bloxorz.progress.v1";
-    const DEFAULT_SETTINGS = { volume: 80, muted: false, biome: "overworld", showHelp: true, lastStage: 0 };
+    const DEFAULT_SETTINGS = { volume: 80, muted: false, biome: "overworld", showHelp: true, lastStage: 0, bgm: true };
     const GROUP_NAMES = { G1: "Cơ bản", G2: "Ô dễ vỡ", G3: "Cầu & công tắc", G4: "Tách khối", G5: "Kết hợp" };
     const SPLASHES = ["Tách đôi khối!", "33 màn chơi!", "A* biết đường!", "Đừng rơi nhé!", "Đứng thẳng vào cổng!",
         "BFS · DFS · UCS · A*", "Cẩn thận cát cam!", "Phiến vàng tách khối!"];
@@ -309,10 +500,21 @@
                 if (level) this.selectStage(Number(level.dataset.level));
             });
             this.el("menu-play").addEventListener("click", () => this.play());
+            const quitBtn = this.el("menu-quit");
+            if (quitBtn) {
+                quitBtn.addEventListener("click", () => {
+                    postEvent("quit");
+                    setTimeout(() => window.close(), 150);
+                });
+            }
             const volume = this.el("set-volume");
             volume.addEventListener("input", () => this.setVolume(Number(volume.value), false));
             volume.addEventListener("change", () => this.setVolume(Number(volume.value), true));
             this.el("set-mute").addEventListener("click", () => this.setMuted(!this.settings.muted));
+            const setBgm = this.el("set-bgm");
+            if (setBgm) {
+                setBgm.addEventListener("click", () => BloxorzAudio.toggleBGM());
+            }
             this.el("set-help").addEventListener("click", () => this.setShowHelp(!this.settings.showHelp));
             this.el("set-reset").addEventListener("click", (e) => this.resetProgress(e.currentTarget));
             this.el("mc-splash").innerText = SPLASHES[Math.floor(Math.random() * SPLASHES.length)];
@@ -322,9 +524,14 @@
             window.addEventListener("load", () => this.boot());
         },
 
-        /** Sau khi cảnh 3D của VT3 đã dựng: áp biome + âm lượng đã lưu, lấy danh sách màn. */
+        /** Sau khi cảnh 3D của VT3 đã dựng: áp âm lượng đã lưu, lấy danh sách màn. */
         async boot() {
-            if (window.SceneBridge) window.SceneBridge.setBiome(this.settings.biome);
+            if (this.settings.bgm !== undefined) {
+                BloxorzAudio.bgmEnabled = Boolean(this.settings.bgm);
+            } else {
+                BloxorzAudio.bgmEnabled = true;
+            }
+            BloxorzAudio.init();
             this.applyAudio();
             this.booted = true;
             const data = await postEvent("stage_list");
@@ -334,6 +541,16 @@
             }
             this.renderLevels();
             this.renderPlayButton();
+            this.renderSettings();
+            const unlockAudio = () => {
+                if (BloxorzAudio.bgmEnabled && BloxorzAudio.bgm && BloxorzAudio.bgm.paused) {
+                    BloxorzAudio.bgm.play().catch(() => {});
+                }
+                window.removeEventListener("pointerdown", unlockAudio);
+                window.removeEventListener("keydown", unlockAudio);
+            };
+            window.addEventListener("pointerdown", unlockAudio, { once: true });
+            window.addEventListener("keydown", unlockAudio, { once: true });
         },
 
         isOpen() { return this.el("mc-menu").classList.contains("show"); },
@@ -372,6 +589,9 @@
 
         /** Bắt đầu / tiếp tục: vào màn chơi gần nhất (lưu lại giữa các lần mở game). */
         play() {
+            if (BloxorzAudio.bgmEnabled && BloxorzAudio.bgm && BloxorzAudio.bgm.paused) {
+                BloxorzAudio.bgm.play().catch(() => {});
+            }
             const last = this.settings.lastStage;
             if (!this.started && this.stages.length && last !== this.current && last >= 0 && last < this.stages.length) {
                 this.selectStage(last);
@@ -428,12 +648,17 @@
             this.el("set-volume-label").innerText = muted ? "ÂM LƯỢNG: TẮT" : `ÂM LƯỢNG: ${volume}%`;
             this.el("set-volume").style.setProperty("--fill", `${muted ? 0 : volume}%`);
             this.el("set-mute").innerText = `Âm thanh: ${muted ? "Tắt" : "Bật"}`;
+            const setBgm = this.el("set-bgm");
+            if (setBgm) setBgm.innerText = `Nhạc nền: ${BloxorzAudio.bgmEnabled ? "Bật" : "Tắt"}`;
             this.el("set-help").innerText = `Bảng phím tắt: ${showHelp ? "Hiện" : "Ẩn"}`;
             document.querySelectorAll("#mc-menu [data-biome]").forEach((b) => b.classList.toggle("active", b.dataset.biome === biome));
         },
 
         /** Âm lượng qua kênh master của bộ âm thanh VT3 (SFX trong scene/index.html, mức gốc 0.85). */
         applyAudio() {
+            if (typeof BloxorzAudio !== "undefined") {
+                BloxorzAudio.setVolume(this.settings.muted ? 0 : this.settings.volume);
+            }
             if (typeof SFX === "undefined") return;
             SFX.init();
             if (!SFX.master || !SFX.ctx) return;
@@ -538,6 +763,7 @@
     window.BloxorzHud = BloxorzHud;
     window.BloxorzInput = BloxorzInput;
     window.BloxorzMenu = BloxorzMenu;
+    window.BloxorzAudio = BloxorzAudio;
     BloxorzHud.mount();
     BloxorzMenu.init();
 })();

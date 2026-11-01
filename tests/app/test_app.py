@@ -456,6 +456,19 @@ global.document = {
   getElementById: el,
 };
 global.window = global;
+window.location = { pathname: "index.html", protocol: "http:" };
+global.Audio = class {
+  constructor() {
+    this.paused = true;
+    this.src = "";
+    this.loop = false;
+    this.volume = 1;
+    this.currentTime = 0;
+  }
+  addEventListener() {}
+  play() { this.paused = false; return Promise.resolve(); }
+  pause() { this.paused = true; }
+};
 const windowHandlers = {};
 window.addEventListener = (type, fn) => { windowHandlers[type] = fn; };
 global.requestAnimationFrame = () => 1;
@@ -659,3 +672,17 @@ def test_bridge_serves_only_vt4_web_assets():
             assert err.value.code == 404
     finally:
         bridge._http_server.shutdown()
+
+
+def test_quit_event_triggers_scene_close():
+    closed = []
+
+    class DummyScene:
+        def close(self):
+            closed.append(True)
+
+    router = WebEventRouter(GameController(stages()), DummyScene())
+    res = router.handle("quit", {})
+    assert res == {"ok": True}
+    assert closed == [True]
+

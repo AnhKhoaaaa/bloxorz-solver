@@ -4,8 +4,16 @@
  * Cuối file: màn hình mở đầu / chọn màn / cài đặt / hướng dẫn (BloxorzMenu), cùng bộ mc-panel, mc-btn, key-badge.
  */
 
+@font-face {
+    font-family: 'Minecraft';
+    src: url('minecraft-f2d-v1-42.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 /* MINECRAFT INVENTORY GUI STYLING */
 .ui-layer {
+    font-family: 'Minecraft', 'Press Start 2P', monospace;
     position: absolute;
     top: 0;
     left: 0;
@@ -26,7 +34,7 @@
         inset 4px 4px 0px #55555a,
         inset -4px -4px 0px #1a1a1d,
         0 6px 20px rgba(0, 0, 0, 0.65);
-    padding: 12px 16px;
+    padding: 10px 14px;
     color: #ffffff;
     pointer-events: auto;
     text-shadow: 2px 2px 0px #000000;
@@ -36,20 +44,116 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 12px;
+    width: 100%;
+    pointer-events: none;
+}
+
+.top-bar-left,
+.top-bar-right {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.top-bar-left {
+    align-items: flex-start;
+}
+
+.top-bar-right {
+    align-items: flex-end;
+}
+
+.title-box {
+    pointer-events: auto;
+    width: 340px;
+    box-sizing: border-box;
+}
+
+.gameplay-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    pointer-events: auto;
+    width: 340px;
+    box-sizing: border-box;
+}
+
+.gameplay-row {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+}
+
+.gameplay-row .mc-btn {
+    flex: 1;
+    padding: 9px 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.ai-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    pointer-events: auto;
+    width: 300px;
+}
+
+.ai-bar-title {
+    font-size: 11px;
+    color: #55ffff;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.mc-btn-grid-ai {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.mc-btn-grid-ai .mc-btn {
+    font-size: 11.5px;
+    padding: 8px 6px;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.mc-btn-row-biomes {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+}
+
+.mc-btn-row-biomes .mc-btn {
+    font-size: 11px;
+    padding: 7px 4px;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.mc-btn-bench-full {
+    width: 100%;
+    margin-top: 3px;
+    font-size: 11.5px;
+    padding: 8px 6px;
+    text-align: center;
 }
 
 .title-box h1 {
     margin: 0 0 8px 0;
-    font-size: 16px;
+    font-size: 17px;
     color: #55ff55;
     letter-spacing: 1px;
     text-shadow: 3px 3px 0px #003300;
 }
 
 .stage-title {
-    font-size: 9px;
+    font-size: 12.5px;
     color: #cccccc;
     margin-bottom: 8px;
 }
@@ -58,14 +162,14 @@
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
-    font-size: 11px;
+    font-size: 12px;
     color: #ffff55;
     align-items: center;
 }
 
 #ui-cube {
     display: none;
-    font-size: 9px;
+    font-size: 11px;
     padding: 4px 8px;
     background: #4d3b1f;
     border: 2px solid #ffaa00;
@@ -74,30 +178,23 @@
 
 #ui-ai-badge {
     display: none;
-    font-size: 9px;
+    font-size: 11px;
     padding: 4px 8px;
     background: #1f3b4d;
     border: 2px solid #55ffff;
     color: #55ffff;
 }
 
-.controls-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
-}
-
 .mc-btn {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 9px;
+    font-family: 'Minecraft', 'Press Start 2P', monospace;
+    font-size: 12px;
     color: #e0e0e0;
     background-color: #6e6e6e;
     border: 3px solid #000;
     box-shadow:
         inset 3px 3px 0px #aaaaaa,
         inset -3px -3px 0px #444444;
-    padding: 9px 11px;
+    padding: 9px 12px;
     cursor: pointer;
     text-shadow: 2px 2px 0px #111;
     transition: transform 0.05s;
@@ -149,22 +246,31 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    flex-wrap: wrap;
-    gap: 12px;
+    width: 100%;
+    gap: 16px;
+    pointer-events: none;
 }
 
 .help-panel {
-    font-size: 8.5px;
-    line-height: 1.85;
+    font-size: 11px;
+    line-height: 1.8;
     color: #cccccc;
+    pointer-events: auto;
+    white-space: nowrap;
+}
+
+.legend-panel {
+    text-align: right;
 }
 
 .key-badge {
     display: inline-block;
     background: #333;
     border: 2px solid #000;
+    border-radius: 0;
     box-shadow: inset 2px 2px 0px #666;
-    padding: 1px 5px;
+    padding: 2px 6px;
+    font-size: 11px;
     color: #55ffff;
     margin: 0 2px;
 }
@@ -180,7 +286,7 @@
     box-shadow: 0 0 30px rgba(85, 255, 85, 0.6), inset 4px 4px 0 #55ff55, inset -4px -4px 0 #007700;
     padding: 24px 36px;
     color: #55ff55;
-    font-size: 20px;
+    font-size: 24px;
     text-align: center;
     z-index: 30;
     opacity: 0;
@@ -197,7 +303,7 @@
 #banner-msg .sub {
     display: block;
     margin-top: 12px;
-    font-size: 11px;
+    font-size: 14px;
     color: #ffff55;
 }
 
@@ -327,7 +433,7 @@ body.hide-help .bottom-bar { display: none; }
 
 .mc-btn-wide {
     width: 100%;
-    font-size: 12px;
+    font-size: 15px;
     padding: 14px 12px;
 }
 
@@ -339,9 +445,9 @@ body.hide-help .bottom-bar { display: none; }
     gap: 10px;
 }
 
-.mc-btn-row .mc-btn { font-size: 11px; padding: 14px 8px; }
+.mc-btn-row .mc-btn { font-size: 14px; padding: 14px 8px; }
 .mc-btn-row-3 { grid-template-columns: 1fr 1fr 1fr; }
-.mc-btn-row-3 .mc-btn { font-size: 9px; }
+.mc-btn-row-3 .mc-btn { font-size: 13px; }
 
 .mc-btn-play {
     background-color: #4c8527;
@@ -460,7 +566,7 @@ body.hide-help .bottom-bar { display: none; }
     align-items: center;
     justify-content: center;
     gap: 7px;
-    font-family: 'Press Start 2P', monospace;
+    font-family: 'Minecraft', 'Press Start 2P', monospace;
     color: #fff;
     text-shadow: 2px 2px 0 #000;
     background: #2b2b31;
@@ -605,4 +711,111 @@ body.hide-help .bottom-bar { display: none; }
     .mc-help-grid { grid-template-columns: 1fr; gap: 2px; }
     .mc-help-grid > div:nth-child(even) { margin-bottom: 8px; color: #aaa; }
     .mc-splash { right: 0; }
+}
+
+/* ---- Minecraft Toast (Thành tựu The End...?) ---- */
+.mc-toast {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 10000;
+    width: 340px;
+    height: 68px;
+    background: url('achieve.png') no-repeat center center / contain;
+    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.85));
+    transform: translateY(-150%);
+    opacity: 0;
+    transition: transform 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.4s ease;
+    pointer-events: none;
+}
+
+.mc-toast.show {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ---- Màn hình kết thúc End Credits & Poem ---- */
+.mc-credits-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 8, 12, 0.95);
+    z-index: 9995;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow: hidden;
+    font-family: 'Minecraft', 'Press Start 2P', monospace;
+}
+
+.mc-credits-overlay.show {
+    display: flex;
+}
+
+.mc-credits-skip {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    z-index: 9998;
+}
+
+.mc-credits-scroll {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: min(720px, 90vw);
+    animation: rollCredits 40s linear infinite;
+    padding-bottom: 200px;
+}
+
+@keyframes rollCredits {
+    0% { transform: translateY(100vh); }
+    100% { transform: translateY(-110%); }
+}
+
+.mc-credits-logo {
+    font-size: 26px;
+    color: #55ff55;
+    text-shadow: 3px 3px 0 #003300;
+    margin-bottom: 24px;
+}
+
+.mc-credits-sub {
+    font-size: 15px;
+    color: #ffaa00;
+    margin-bottom: 44px;
+}
+
+.mc-credits-poem {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    font-size: 15px;
+    line-height: 2.1;
+    color: #e0e0e0;
+}
+
+.mc-credits-poem p { margin: 0; }
+.mc-credits-accent { color: #55ffff !important; text-shadow: 1px 1px 0 #003333; font-size: 16.5px; }
+.mc-credits-gold { font-size: 19px; color: #ffd700 !important; text-shadow: 2px 2px 0 #3f3f00; margin: 30px 0 16px 0 !important; }
+
+.mc-credits-team {
+    margin: 20px auto;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    text-align: center;
+}
+.mc-credits-team p {
+    font-size: 14px;
+    line-height: 1.9;
+    color: #dddddd;
+}
+.mc-credits-team .mc-credits-accent {
+    font-size: 16px;
+    display: inline-block;
+    margin-bottom: 2px;
 }
